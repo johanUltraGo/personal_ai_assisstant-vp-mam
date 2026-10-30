@@ -1,0 +1,120 @@
+﻿VICE PRINCIPAL AI ASSISTANT SPEC (PRINCIPAL VERSION)
+Date: 30 October 2026
+
+
+1. Goal
+The Vice Principal needs help remembering work and planning her day. Her hours vary, so the assistant works with time windows she sets, not fixed clock times.
+
+
+Success means:
+- She is reminded of every task she asks to be reminded of.
+- She sees her full work list each morning without asking.
+- Less time goes into planning and remembering.
+
+
+2. Users
+- Main user: Vice Principal, Uma Maheshwari.
+- Others who benefit: the school community and parents.
+- Setup: the developer (Johan) sets up connectors, categories and preferences.
+
+
+3. Daily rhythm
+- Morning (9:00 AM every day): the assistant sends her the full work list for the day, built from the time windows she gave the evening before. She confirms or changes it in one reply.
+- Evening (about 30 minutes): she talks with the assistant about today and plans tomorrow. The assistant turns the talk into a schedule of time windows and tasks, which she can edit before saving.
+- Reminders: only when she asks. She can set one at a specific time, including a week ahead. There is no automatic reminder for every task.
+
+
+4. Voice, language and input
+- The assistant is voice-first, like Siri. Voice is the main way to use it. The screen is secondary and shows the morning list and confirmations.
+- Tamil and English are detected automatically, including mixed sentences. She never has to choose a language, and she can switch by speaking.
+- Typing works too. She taps the screen to type a message or command.
+- Attachments: she can attach a file, photo or document from her phone or Google Drive.
+- Photo upload: tap the plus (+) button, choose one or more photos, then tap the tick. The photos go to the chosen task or document straight away.
+- Launch: a button press or a wake word. The wake word is chosen by her. When it opens, the screen shows a Siri-style visual effect so she knows it is listening.
+
+
+5. Messaging and documents
+- Send by name: she says a contact's name and the assistant finds the address. If several contacts match, it asks which one.
+- One confirmation: before any message leaves, the assistant shows it once and asks "Send?". No other confirmations are asked.
+- Email: Gmail sending is supported.
+- WhatsApp: she wants messages to go out on WhatsApp too, since Meta is charging for the service. This is not yet confirmed. WhatsApp has no general way for an outside assistant to send messages, and automating it may break its terms. It must be checked before it is promised.
+- Drive documents: the assistant reads a whole Drive file first, then tells her what it contains. Only after that does it send the message she dictates to the named person.
+- Leave letters: the assistant can draft and send leave letters on her instruction.
+
+
+6. School calendar and alerts
+- The school calendar is a file in the school's Drive. The assistant checks it every time it runs.
+- Events such as Diwali are listed with dates and holidays. Two days before an event, the assistant asks: "This event is coming up. Shall I send a notification to the parents' group?" If she says yes, it sends.
+- Saturdays, Sundays and other holidays in the calendar are used when planning leave.
+- Summaries and corrections of documents can be sent to the parents' group when she asks.
+- Teachers' leave: when she needs to give teachers a leave, the assistant drafts the letter and sends it to the teachers' WhatsApp group.
+- Student leave: for specific students, she gives the names and the assistant sends the notice straight away. Usually one or two students at a time.
+
+
+7. Connectors and apps
+- Gmail: multiple accounts, full access.
+- Google Drive: multiple accounts, full access, including the school Drive.
+- Innovate School app and Sola app: both are required. They should be connected from the first prototype so their updates and payments can be tracked.
+- Calendar: read access. To be confirmed.
+- The assistant checks school apps all day, so she can see who has paid, what has been updated in Innovate School and who has uploaded what.
+- Alerts run from 9:00 AM to 6:00 PM.
+- Every connector uses a plug-in interface, so new services can be added without rewriting the core.
+
+
+8. Power-button launch and platform
+- The assistant is not a normal app she opens. The aim is for it to activate from the phone's power button.
+- Android needs a native app registered as the default assistant. A web app cannot do this. The platform choice depends on this.
+- Open: check whether her phone supports this, and whether Gemini's side panel can do the same job on her account.
+- The first version runs on her phone. Desktop can come later.
+
+
+9. Brain and intelligence
+- The assistant must be able to explain what it is doing, and what each part of the system does, when she asks.
+- Its reasoning should be based on Anthropic's Claude models.
+
+
+10. Reminders and task rules
+- Reminders fire only when she asked for them, at the time she gave.
+- The assistant checks for due reminders every minute.
+- Each reminder is sent once. Repeats happen only if she sets them.
+- Failed sends retry up to 3 times, then appear in the app.
+- Each reminder logs sent and delivered status.
+- Snooze, delay and reschedule are logged.
+- Task states: drafted, scheduled, reminder sent, in progress, completed, overdue. Each change gets a time stamp.
+- The assistant never marks a task done by itself. She confirms.
+- Unfinished tasks carry over to the next day's plan.
+
+
+11. Data and privacy
+- Storage: Supabase database. Hosting location to be confirmed before the build.
+- The assistant does not hold student personal data. Nothing goes to parents or staff automatically. Every send needs her confirmation.
+- The timetable and alert protocols are confidential.
+- Task history: official records are kept. Deleting history needs her approval. The workbook has both "keep official records" and "delete audit log", so this needs confirming.
+- Voice notes: whether they are transcribed on the device or in the cloud is still to be decided.
+
+
+12. Build phases
+- Phase 1 (prototype): database, task states, manual task entry, morning work list at 9:00 AM.
+- Phase 2: on-demand reminders, phone notifications, reminder log.
+- Phase 3: evening planning conversation, voice capture, Tamil and English, Gmail and Drive, messaging with the "Send?" step.
+- Phase 4: school calendar, Innovate School and Sola connectors, parent and teacher group messages, leave letters, power-button launch.
+- Each phase ends with her testing it before the next one starts.
+
+
+13. Out of scope for now
+- Automatic messages to parents or staff.
+- Automatic task completion.
+- Editing student records.
+- Desktop app.
+
+
+14. Open questions
+- Voice notes on device or in the cloud?
+- Is task history permanent or deletable?
+- Which school systems can the assistant read, and has the school approved it?
+- Is food quality and wastage checking in scope?
+- Will anyone besides the Vice Principal use it?
+- Does this share code with the Birthday AI Agent project?
+- Can the power button or a system shortcut open it? Can Gemini's side panel do the same?
+- Should Calendar access be read-only?
+- Can WhatsApp sending be done legally and reliably?

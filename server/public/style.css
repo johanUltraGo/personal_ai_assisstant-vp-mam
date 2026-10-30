@@ -1,0 +1,12 @@
+body { font-family: system-ui, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+header { margin-bottom: 1.5rem; }
+.subtitle { color: #666; font-size: 0.9rem; }
+section { margin-bottom: 2rem; padding: 1rem; border: 1px solid #ddd; border-radius: 8px; }
+form label { display: block; margin-bottom: 0.6rem; font-size: 0.9rem; }
+form input, form textarea { display: block; width: 100%; padding: 0.4rem; margin-top: 0.2rem; box-sizing: border-box; }
+button { padding: 0.4rem 0.9rem; cursor: pointer; }
+table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; }
+th, td { text-align: left; padding: 0.4rem; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+.error { color: #b00020; }
+.status-COMPLETED { color: #2e7d32; font-weight: bold; }
+.status-OVERDUE { color: #c62828; font-weight: bold; }

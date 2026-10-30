@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Vice Principal AI — Tasks</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Vice Principal AI</h1>
+    <p class="subtitle">Phase 1 foundation — manual task entry &amp; morning work list</p>
+  </header>
+
+  <main>
+    <section id="morning-list-section">
+      <h2>Today's work list</h2>
+      <button id="refresh-morning-list">Refresh</button>
+      <ul id="morning-list"></ul>
+    </section>
+
+    <section id="new-task-section">
+      <h2>Add a task</h2>
+      <form id="new-task-form">
+        <label>Title <input type="text" id="task-title" required /></label>
+        <label>Category <input type="text" id="task-category" placeholder="e.g. teaching, admin" /></label>
+        <label>Starts <input type="datetime-local" id="task-start" required /></label>
+        <label>Ends <input type="datetime-local" id="task-end" required /></label>
+        <label>Notes <textarea id="task-description"></textarea></label>
+        <button type="submit">Add task</button>
+      </form>
+      <p id="form-error" class="error"></p>
+    </section>
+
+    <section id="new-reminder-section">
+      <h2>Set a reminder</h2>
+      <form id="new-reminder-form">
+        <label>What to remind me <input type="text" id="reminder-label" required /></label>
+        <label>When <input type="datetime-local" id="reminder-fire-at" required /></label>
+        <label>Repeat
+          <select id="reminder-repeat">
+            <option value="">No repeat</option>
+            <option value="DAILY">Daily</option>
+            <option value="WEEKLY">Weekly</option>
+          </select>
+        </label>
+        <button type="submit">Set reminder</button>
+      </form>
+    </section>
+
+    <section id="reminders-section">
+      <h2>Reminders</h2>
+      <button id="refresh-reminders">Refresh</button>
+      <table id="reminders-table">
+        <thead><tr><th>When</th><th>Label</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section id="all-tasks-section">
+      <h2>All tasks</h2>
+      <button id="refresh-all-tasks">Refresh</button>
+      <table id="tasks-table">
+        <thead>
+          <tr><th>Title</th><th>Category</th><th>Window</th><th>Status</th><th>Actions</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,124 @@
+// Phase 1+2 schema. Tables for later phases (evening_plans, contacts,
+// messages_sent, calendar_events, connectors, school_app_snapshots,
+// attachments) are added in the phases that actually need them, per
+// planning.md §9 — they are not pre-created here to avoid building
+// unused structure ahead of the requirement that needs it.
+//
+// Dev datasource is local SQLite (no Postgres/Docker available in this
+// environment). To move to Supabase: change provider to "postgresql",
+// set DATABASE_URL to the Supabase connection string, then run
+// `npm run prisma:migrate`. See planning.md §5 ("Hosting location" — ❓).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// SQLite (the local dev datasource) has no native enum support in Prisma,
+// so status/source fields are plain strings, validated against the TS
+// union types in src/domain/types.ts at the application layer. If/when
+// this moves to Supabase/Postgres, these can optionally become real
+// Prisma enums without changing any application code.
+
+model Task {
+  id              String   @id @default(cuid())
+  title           String
+  description     String?
+  category        String?
+  timeWindowStart DateTime
+  timeWindowEnd   DateTime
+  status          String   @default("DRAFTED")
+  source          String   @default("MANUAL")
+  carriedOverCount Int     @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  history   TaskHistory[]
+  reminders Reminder[]
+}
+
+model TaskHistory {
+  id          String     @id @default(cuid())
+  taskId      String
+  fromStatus  String?
+  toStatus    String
+  changedAt   DateTime   @default(now())
+  changedBy   String     @default("principal")
+  note        String?
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+}
+
+model Reminder {
+  id          String   @id @default(cuid())
+  taskId      String?
+  label       String
+  fireAt      DateTime
+  status      String   @default("PENDING")
+  retryCount  Int      @default(0)
+  repeatRule  String?
+  createdAt   DateTime @default(now())
+
+  task Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  log  ReminderLog[]
+
+  @@index([fireAt, status])
+}
+
+model ReminderLog {
+  id         String   @id @default(cuid())
+  reminderId String
+  eventType  String
+  eventAt    DateTime @default(now())
+  details    String?
+
+  reminder Reminder @relation(fields: [reminderId], references: [id], onDelete: Cascade)
+
+  @@index([reminderId])
+}
+
+// Phase 3 additions: contacts (for send-by-name resolution) and a
+// permanent audit record of every message actually sent, per
+// planning.md §5. Nothing here is written to until she gives the single
+// "Send?" confirmation (spec §5) — see src/services/messagingService.ts.
+
+model Contact {
+  id        String   @id @default(cuid())
+  displayName String
+  email     String?
+  whatsappNumber String?
+  createdAt DateTime @default(now())
+}
+
+model MessageSent {
+  id          String   @id @default(cuid())
+  channel     String // EMAIL | WHATSAPP
+  recipient   String
+  subject     String?
+  body        String
+  status      String // SENT | BLOCKED | FAILED
+  blockReason String?
+  confirmedAt DateTime @default(now())
+}
+
+// Phase 4: school calendar awareness (spec §6). Rows here are produced
+// by syncing the school's Drive calendar file — that sync itself is
+// blocked without a configured Drive connector (same credential gap as
+// Phase 3's Gmail/Drive), so this model and the "two days before" logic
+// are implemented and tested against manually-seeded rows for now. See
+// src/services/calendarService.ts and the final report's blocker list.
+model CalendarEvent {
+  id          String    @id @default(cuid())
+  eventName   String
+  eventDate   DateTime
+  type        String // HOLIDAY | EVENT
+  promptedAt  DateTime?
+  notifiedAt  DateTime?
+  createdAt   DateTime  @default(now())
+}
