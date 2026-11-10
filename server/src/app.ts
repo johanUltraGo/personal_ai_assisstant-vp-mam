@@ -9,6 +9,7 @@ import { calendarRouter } from "./routes/calendar";
 import { leaveRouter } from "./routes/leave";
 import { connectorsRouter } from "./routes/connectors";
 import { attachmentsRouter } from "./routes/attachments";
+import { errorHandler } from "./http/errors";
 
 export function createApp() {
   const app = express();
@@ -32,5 +33,6 @@ export function createApp() {
   // same REST API above.
   app.use("/", express.static(path.join(__dirname, "..", "public")));
 
+  app.use(errorHandler);
   return app;
 }

@@ -47,12 +47,7 @@ tasksRouter.get("/:id", async (req, res) => {
 });
 
 tasksRouter.post("/:id/start", async (req, res) => {
-  try {
-    const task = await taskService.startTask(req.params.id);
-    res.json(task);
-  } catch (err) {
-    res.status(400).json({ error: (err as Error).message });
-  }
+  res.json(await taskService.startTask(req.params.id));
 });
 
 /**
@@ -61,10 +56,5 @@ tasksRouter.post("/:id/start", async (req, res) => {
  * anywhere in this codebase that calls taskService.completeTask.
  */
 tasksRouter.post("/:id/complete", async (req, res) => {
-  try {
-    const task = await taskService.completeTask(req.params.id);
-    res.json(task);
-  } catch (err) {
-    res.status(400).json({ error: (err as Error).message });
-  }
+  res.json(await taskService.completeTask(req.params.id));
 });
