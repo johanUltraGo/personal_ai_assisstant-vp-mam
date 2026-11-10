@@ -22,6 +22,130 @@ async function loadMorningList() {
   }
 }
 
+function setTaskDraft(draft) {
+  const preview = document.getElementById("task-draft");
+  preview.hidden = false;
+  preview.innerHTML = "";
+  const details = document.createElement("p");
+  details.textContent = `${draft.title} — ${new Date(draft.timeWindowStart).toLocaleString()} to ${new Date(draft.timeWindowEnd).toLocaleString()}`;
+  const notes = document.createElement("p");
+  notes.textContent = draft.description || draft.category || "No additional notes";
+  const use = document.createElement("button");
+  use.type = "button";
+  use.textContent = "Use this draft";
+  use.addEventListener("click", () => {
+    document.getElementById("task-title").value = draft.title;
+    document.getElementById("task-category").value = draft.category || "";
+    document.getElementById("task-description").value = draft.description || "";
+    document.getElementById("task-start").value = toLocalDateTime(draft.timeWindowStart);
+    document.getElementById("task-end").value = toLocalDateTime(draft.timeWindowEnd);
+    document.getElementById("new-task-section").scrollIntoView({ behavior: "smooth" });
+  });
+  preview.append(details, notes, use);
+}
+
+function toLocalDateTime(value) {
+  const date = new Date(value);
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+}
+
+async function parseAssistantText() {
+  const text = document.getElementById("assistant-text").value.trim();
+  const status = document.getElementById("speech-status");
+  if (!text) { status.textContent = "Please speak or type what you would like to plan."; return; }
+  status.textContent = "Creating a draft…";
+  try {
+    const result = await fetchJSON("/api/ai/parse-task", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }),
+    });
+    if (result.status === "parsed") {
+      setTaskDraft(result.draft);
+      status.textContent = "Draft ready for your review.";
+    } else {
+      status.textContent = result.question;
+    }
+  } catch (error) {
+    status.textContent = error.message;
+  }
+}
+
+function configureSpeechInput() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const button = document.getElementById("listen-button");
+  const status = document.getElementById("speech-status");
+  if (!SpeechRecognition) {
+    button.disabled = true;
+    status.textContent = "Voice input is not available in this browser. You can still type a task.";
+    return;
+  }
+  button.addEventListener("click", () => {
+    const recognition = new SpeechRecognition();
+    recognition.lang = "ta-IN"; // Tamil recognisers also accept common English school terms; typing remains available if unsupported.
+    recognition.interimResults = true;
+    recognition.continuous = false;
+    status.textContent = "Listening…";
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results).map((result) => result[0].transcript).join(" ");
+      document.getElementById("assistant-text").value = transcript;
+      status.textContent = "I heard: " + transcript;
+    };
+    recognition.onerror = (event) => { status.textContent = `Voice input could not start: ${event.error}. You can type instead.`; };
+    recognition.onend = () => { if (status.textContent === "Listening…") status.textContent = "Listening finished. Review the text, then make a task draft."; };
+    recognition.start();
+  });
+}
+
+async function loadConnections() {
+  const list = await fetchJSON("/api/connectors/health");
+  const element = document.getElementById("connections-list");
+  element.innerHTML = "";
+  for (const connection of list) {
+    const item = document.createElement("li");
+    item.className = connection.configured ? "connection-ready" : "connection-not-ready";
+    item.textContent = `${connection.type}: ${connection.detail}`;
+    element.appendChild(item);
+  }
+}
+
+document.getElementById("parse-task-button").addEventListener("click", parseAssistantText);
+document.getElementById("refresh-connections").addEventListener("click", () => loadConnections().catch((error) => alert(error.message)));
+document.getElementById("leave-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const output = document.getElementById("leave-draft");
+  try {
+    const result = await fetchJSON("/api/leave/draft", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        audience: document.getElementById("leave-audience").value,
+        names: document.getElementById("leave-names").value.split(",").map((name) => name.trim()).filter(Boolean),
+        leaveDate: document.getElementById("leave-date").value,
+        reason: document.getElementById("leave-reason").value || undefined,
+        schoolName: document.getElementById("leave-school").value || undefined,
+      }),
+    });
+    output.hidden = false;
+    output.textContent = `${result.subject}\n\n${result.body}`;
+  } catch (error) { alert(error.message); }
+});
+
+document.getElementById("attachment-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const taskId = document.getElementById("attachment-task-id").value.trim();
+  const file = document.getElementById("attachment-file").files[0];
+  const status = document.getElementById("attachment-status");
+  if (!file) return;
+  status.textContent = "Attaching…";
+  try {
+    const response = await fetch(`/api/attachments?taskId=${encodeURIComponent(taskId)}`, {
+      method: "POST", headers: { "Content-Type": file.type || "application/octet-stream", "X-File-Name": file.name }, body: file,
+    });
+    if (!response.ok) throw new Error((await response.json()).error || "Could not attach file");
+    status.textContent = `${file.name} is attached to this task.`;
+    document.getElementById("attachment-file").value = "";
+  } catch (error) { status.textContent = error.message; }
+});
+
 async function loadAllTasks() {
   const tasks = await fetchJSON("/api/tasks");
   const tbody = document.querySelector("#tasks-table tbody");
@@ -36,6 +160,12 @@ async function loadAllTasks() {
       }
       actions.appendChild(actionButton("Complete", () => completeTask(t.id)));
     }
+    actions.appendChild(actionButton("Attach file", () => {
+      document.getElementById("attachment-task-id").value = t.id;
+      document.getElementById("attachment-section").scrollIntoView({ behavior: "smooth" });
+      document.getElementById("attachment-file").focus();
+      return Promise.resolve();
+    }));
 
     tr.innerHTML = `
       <td>${escapeHtml(t.title)}</td>
@@ -154,3 +284,5 @@ document.getElementById("new-task-form").addEventListener("submit", async (e) =>
 
 loadMorningList();
 loadAllTasks();
+configureSpeechInput();
+loadConnections().catch(() => {});

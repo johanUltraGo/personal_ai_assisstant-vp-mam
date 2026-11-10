@@ -6,6 +6,9 @@ import { remindersRouter } from "./routes/reminders";
 import { aiRouter } from "./routes/ai";
 import { messagingRouter } from "./routes/messaging";
 import { calendarRouter } from "./routes/calendar";
+import { leaveRouter } from "./routes/leave";
+import { connectorsRouter } from "./routes/connectors";
+import { attachmentsRouter } from "./routes/attachments";
 
 export function createApp() {
   const app = express();
@@ -19,6 +22,9 @@ export function createApp() {
   app.use("/api/ai", aiRouter);
   app.use("/api/messaging", messagingRouter);
   app.use("/api/calendar", calendarRouter);
+  app.use("/api/leave", leaveRouter);
+  app.use("/api/connectors", connectorsRouter);
+  app.use("/api/attachments", attachmentsRouter);
 
   // Minimal functional web UI (stand-in secondary screen until the
   // native Android client is built for Phase 4's power-button goal —

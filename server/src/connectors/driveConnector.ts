@@ -11,6 +11,27 @@ export interface DriveClient {
   readFile(fileId: string): Promise<DriveFile>;
 }
 
+class GoogleDriveApiClient implements DriveClient {
+  constructor(private readonly accessToken: string) {}
+
+  async readFile(fileId: string): Promise<DriveFile> {
+    const headers = { Authorization: `Bearer ${this.accessToken}` };
+    const metadataResponse = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=name,mimeType`,
+      { headers }
+    );
+    if (!metadataResponse.ok) throw new Error(`Drive could not read file details (${metadataResponse.status}): ${await metadataResponse.text()}`);
+    const metadata = (await metadataResponse.json()) as { name: string; mimeType: string };
+    const isGoogleDocument = metadata.mimeType.startsWith("application/vnd.google-apps.");
+    const contentUrl = isGoogleDocument
+      ? `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/export?mimeType=text/plain`
+      : `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`;
+    const contentResponse = await fetch(contentUrl, { headers });
+    if (!contentResponse.ok) throw new Error(`Drive could not download the file (${contentResponse.status}): ${await contentResponse.text()}`);
+    return { name: metadata.name, content: await contentResponse.text() };
+  }
+}
+
 /**
  * Google Drive connector (spec §7: "multiple accounts, full access,
  * including the school Drive"). Same blocker as Gmail: no OAuth client
@@ -56,4 +77,9 @@ export class DriveConnector implements Connector {
 export async function readAndSummarize(connector: DriveConnector, fileId: string): Promise<string> {
   const file = await connector.readFile(fileId);
   return `"${file.name}" contains: ${file.content}`;
+}
+
+export function driveFromEnvironment(accountLabel = process.env.DRIVE_ACCOUNT_LABEL || "default") {
+  const accessToken = process.env.GOOGLE_ACCESS_TOKEN;
+  return new DriveConnector(accountLabel, accessToken ? new GoogleDriveApiClient(accessToken) : undefined);
 }

@@ -8,10 +8,55 @@
 <body>
   <header>
     <h1>Vice Principal AI</h1>
-    <p class="subtitle">Phase 1 foundation — manual task entry &amp; morning work list</p>
+    <p class="subtitle">Your daily planning, reminders, and reviewed communications</p>
   </header>
 
   <main>
+    <section id="assistant-section">
+      <h2>Speak or type a task</h2>
+      <p class="hint">Say it in Tamil, English, or a mix. You will always review the task before it is saved.</p>
+      <textarea id="assistant-text" rows="3" placeholder="For example: Tomorrow at 10, call Mrs Iyer about fee payment."></textarea>
+      <div class="button-row">
+        <button id="listen-button" type="button">🎙 Start listening</button>
+        <button id="parse-task-button" type="button">Make task draft</button>
+      </div>
+      <p id="speech-status" class="hint" aria-live="polite"></p>
+      <div id="task-draft" class="preview" hidden></div>
+    </section>
+
+    <section id="leave-section">
+      <h2>Draft a leave notice</h2>
+      <p class="hint">This creates a draft only. It cannot send anything by itself.</p>
+      <form id="leave-form">
+        <label>For
+          <select id="leave-audience"><option value="TEACHER">Teachers</option><option value="STUDENT">Student / parent</option></select>
+        </label>
+        <label>Name(s), separated by commas <input type="text" id="leave-names" required /></label>
+        <label>Leave date <input type="date" id="leave-date" required /></label>
+        <label>Reason (optional) <input type="text" id="leave-reason" /></label>
+        <label>School name (optional) <input type="text" id="leave-school" /></label>
+        <button type="submit">Create draft</button>
+      </form>
+      <div id="leave-draft" class="preview" hidden></div>
+    </section>
+
+    <section id="connections-section">
+      <h2>Connections</h2>
+      <button id="refresh-connections" type="button">Check connection status</button>
+      <ul id="connections-list"></ul>
+    </section>
+
+    <section id="attachment-section">
+      <h2>Attach a photo or document to a task</h2>
+      <p class="hint">The file stays with the selected task. It is not shared until you separately prepare and confirm a message.</p>
+      <form id="attachment-form">
+        <label>Selected task <input type="text" id="attachment-task-id" required readonly placeholder="Choose Attach file beside a task" /></label>
+        <label>Choose file <input type="file" id="attachment-file" required accept="image/*,.pdf,.doc,.docx,.txt" /></label>
+        <button type="submit">Attach file</button>
+      </form>
+      <p id="attachment-status" class="hint" aria-live="polite"></p>
+    </section>
+
     <section id="morning-list-section">
       <h2>Today's work list</h2>
       <button id="refresh-morning-list">Refresh</button>

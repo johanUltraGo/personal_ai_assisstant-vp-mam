@@ -82,7 +82,7 @@ export async function confirmSend(message: PreparedMessage, connectors: Messagin
         body: message.body,
       });
     } else {
-      await connectors.whatsapp.send();
+      await connectors.whatsapp.send({ to: message.recipientAddress, body: message.body });
     }
     return prisma.messageSent.create({
       data: {

@@ -39,6 +39,21 @@ model Task {
 
   history   TaskHistory[]
   reminders Reminder[]
+  attachments Attachment[]
+}
+
+model Attachment {
+  id           String   @id @default(cuid())
+  taskId       String?
+  originalName String
+  storedName   String   @unique
+  mimeType     String
+  size         Int
+  createdAt    DateTime @default(now())
+
+  task Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([taskId])
 }
 
 model TaskHistory {

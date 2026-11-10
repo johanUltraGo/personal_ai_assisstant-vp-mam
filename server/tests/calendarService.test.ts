@@ -7,6 +7,22 @@ function daysFromNow(days: number) {
 }
 
 describe("calendarService", () => {
+  it("parses all-day iCalendar exports in the school's timezone", () => {
+    const events = calendarService.parseCalendarFile(
+      "BEGIN:VCALENDAR\nBEGIN:VEVENT\nSUMMARY:Diwali Holiday\nDTSTART;VALUE=DATE:20261112\nEND:VEVENT\nEND:VCALENDAR"
+    );
+    expect(events).toHaveLength(1);
+    expect(events[0].eventName).toBe("Diwali Holiday");
+    expect(events[0].type).toBe("HOLIDAY");
+  });
+
+  it("parses a portable JSON calendar export", () => {
+    const events = calendarService.parseCalendarFile(
+      JSON.stringify([{ eventName: "Sports Day", eventDate: "2026-11-20", type: "EVENT" }])
+    );
+    expect(events[0].eventName).toBe("Sports Day");
+  });
+
   it("flags an event exactly two days out as needing a prompt", async () => {
     const diwali = await calendarService.seedEvent({ eventName: "Diwali", eventDate: daysFromNow(2), type: "HOLIDAY" });
     await calendarService.seedEvent({ eventName: "Sports Day", eventDate: daysFromNow(5), type: "EVENT" });

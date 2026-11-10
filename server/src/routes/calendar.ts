@@ -2,8 +2,9 @@ import { Router } from "express";
 import { z } from "zod";
 import * as calendarService from "../services/calendarService";
 import * as messagingService from "../services/messagingService";
-import { GmailConnector } from "../connectors/gmailConnector";
-import { WhatsAppConnector } from "../connectors/whatsappConnector";
+import { gmailFromEnvironment } from "../connectors/gmailConnector";
+import { whatsappFromEnvironment } from "../connectors/whatsappConnector";
+import { driveFromEnvironment } from "../connectors/driveConnector";
 
 export const calendarRouter = Router();
 
@@ -20,6 +21,19 @@ calendarRouter.post("/events", async (req, res) => {
   const parsed = seedSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   res.status(201).json(await calendarService.seedEvent(parsed.data));
+});
+
+const syncSchema = z.object({ fileId: z.string().min(1) });
+
+/** Downloads the school's shared Drive calendar on demand. OAuth access is checked by the connector. */
+calendarRouter.post("/sync-drive", async (req, res) => {
+  const parsed = syncSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+  try {
+    res.json(await calendarService.syncCalendarFromDrive(driveFromEnvironment(), parsed.data.fileId));
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
 });
 
 calendarRouter.get("/due-prompts", async (_req, res) => {
@@ -61,8 +75,8 @@ calendarRouter.post("/events/:id/respond", async (req, res) => {
       body: parsed.data.body,
     });
     const sent = await messagingService.confirmSend(prepared, {
-      gmail: new GmailConnector("default"),
-      whatsapp: new WhatsAppConnector(),
+      gmail: gmailFromEnvironment(),
+      whatsapp: whatsappFromEnvironment(),
     });
     const updated = await calendarService.recordDecision(req.params.id, (sent as any).status === "SENT");
     res.json({ event: updated, message: sent });

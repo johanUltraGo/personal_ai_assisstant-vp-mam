@@ -2,8 +2,8 @@ import { Router } from "express";
 import { z } from "zod";
 import * as contactService from "../services/contactService";
 import * as messagingService from "../services/messagingService";
-import { GmailConnector } from "../connectors/gmailConnector";
-import { WhatsAppConnector } from "../connectors/whatsappConnector";
+import { gmailFromEnvironment } from "../connectors/gmailConnector";
+import { whatsappFromEnvironment } from "../connectors/whatsappConnector";
 
 export const messagingRouter = Router();
 
@@ -64,8 +64,8 @@ messagingRouter.post("/confirm-send", async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const connectors = {
-    gmail: new GmailConnector("default"), // no OAuth client wired yet — see gmailConnector.ts
-    whatsapp: new WhatsAppConnector(),
+    gmail: gmailFromEnvironment(),
+    whatsapp: whatsappFromEnvironment(),
   };
 
   try {
