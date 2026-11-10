@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import Anthropic from "@anthropic-ai/sdk";
 import { InvalidTransitionError } from "../services/taskService";
 import { MissingApiKeyError } from "../ai/claude";
+import { ConversationBrokenError, ConversationBusyError } from "../assistant/agent";
 
 export class NotFoundError extends Error {}
 export class BadRequestError extends Error {}
@@ -21,6 +22,9 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
   if (err instanceof ZodError) return res.status(400).json({ error: err.flatten() });
   if (err instanceof BadRequestError || err instanceof InvalidTransitionError) {
     return res.status(400).json({ error: err.message });
+  }
+  if (err instanceof ConversationBusyError || err instanceof ConversationBrokenError) {
+    return res.status(409).json({ error: err.message, conversation: err instanceof ConversationBusyError ? "busy" : "broken" });
   }
   if (err instanceof MissingApiKeyError) return res.status(503).json({ error: err.message, blocked: "ANTHROPIC_API_KEY" });
   if (err instanceof Anthropic.RateLimitError) {

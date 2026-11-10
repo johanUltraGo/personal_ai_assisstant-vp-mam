@@ -23,8 +23,22 @@ export async function startConversation(kind = "GENERAL", opening) {
   if (opening) await ask(opening, "TYPED");
 }
 
+let busy = false;
+function setBusy(value) {
+  busy = value;
+  for (const id of ["assistant-send", "listen-button", "plan-tomorrow", "new-conversation"]) document.getElementById(id).disabled = value;
+}
+
 export async function ask(text, inputMode = lastInputMode) {
   if (!text.trim()) return;
+  // One message at a time: a second one while the first is answered would
+  // interleave the conversation (the server refuses it too).
+  if (busy) {
+    status("Please wait — I'm still answering your last message.");
+    document.getElementById("assistant-text").value = text;
+    return;
+  }
+  setBusy(true);
   if (!conversation) conversation = await api("/api/assistant/conversations", { json: { kind: "GENERAL" } });
   bubble("user", text);
   status("Thinking…");
@@ -42,6 +56,7 @@ export async function ask(text, inputMode = lastInputMode) {
     status(err.message);
   } finally {
     lastInputMode = "TYPED";
+    setBusy(false);
   }
 }
 

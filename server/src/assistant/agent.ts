@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { DateTime } from "luxon";
 import { prisma } from "../db";
 import { callClaude, ClaudeLike, Effort, getClaude } from "../ai/claude";
+import Anthropic2 from "@anthropic-ai/sdk";
 import { NotFoundError } from "../http/errors";
 import { schoolTimezone, startOfDay, tasksForDay } from "../services/morningListService";
 import { SYSTEM_PROMPT } from "./prompt";
@@ -15,6 +16,22 @@ export type ConversationKind = "GENERAL" | "EVENING_PLAN" | "MORNING_REPLY";
 export const CONVERSATION_KINDS: ConversationKind[] = ["GENERAL", "EVENING_PLAN", "MORNING_REPLY"];
 
 const MAX_MODEL_CALLS = 8;
+
+/** A second message arrived while the previous one is still being answered. */
+export class ConversationBusyError extends Error {
+  constructor() {
+    super("I'm still answering your last message. Please wait a moment.");
+  }
+}
+
+/** Claude rejected this conversation's stored history; it cannot continue. */
+export class ConversationBrokenError extends Error {
+  constructor() {
+    super("This conversation can't continue. Please tap New conversation and ask again.");
+  }
+}
+
+const runningTurns = new Set<string>();
 const EFFORT: Record<ConversationKind, Effort> = { GENERAL: "low", MORNING_REPLY: "low", EVENING_PLAN: "medium" };
 
 export function startConversation(kind: ConversationKind) {
@@ -25,9 +42,31 @@ async function appendMessage(conversationId: string, role: "user" | "assistant",
   await prisma.conversationMessage.create({ data: { conversationId, role, contentJson: JSON.stringify(content) } });
 }
 
+/**
+ * Stored history, replayed unchanged. If a tool call never got its result
+ * (process stopped mid-turn), an error result is supplied for it so the
+ * conversation can continue instead of failing on every later turn.
+ */
 async function history(conversationId: string): Promise<MessageParam[]> {
   const rows = await prisma.conversationMessage.findMany({ where: { conversationId }, orderBy: { createdAt: "asc" } });
-  return rows.map((r) => ({ role: r.role as "user" | "assistant", content: JSON.parse(r.contentJson) }));
+  const messages: MessageParam[] = [];
+  rows.forEach((row, i) => {
+    const content = JSON.parse(row.contentJson);
+    messages.push({ role: row.role as "user" | "assistant", content });
+    if (row.role !== "assistant" || !Array.isArray(content)) return;
+    const pendingIds = content.filter((b: any) => b.type === "tool_use").map((b: any) => b.id as string);
+    if (!pendingIds.length) return;
+    const next = rows[i + 1] ? JSON.parse(rows[i + 1].contentJson) : null;
+    const answered = new Set(Array.isArray(next) ? next.filter((b: any) => b.type === "tool_result").map((b: any) => b.tool_use_id) : []);
+    const missing = pendingIds.filter((id) => !answered.has(id));
+    if (missing.length) {
+      messages.push({
+        role: "user",
+        content: missing.map((id) => ({ type: "tool_result" as const, tool_use_id: id, content: "This step was interrupted and did not run.", is_error: true })),
+      });
+    }
+  });
+  return messages;
 }
 
 /** Fresh facts for this turn, kept out of the cached system prompt. */
@@ -65,11 +104,34 @@ export async function runTurn(
   conversationId: string,
   text: string,
   inputMode: "VOICE" | "TYPED",
-  client: ClaudeLike = getClaude()
+  client?: ClaudeLike
 ): Promise<TurnResult> {
   const conversation = await prisma.conversation.findUnique({ where: { id: conversationId } });
   if (!conversation) throw new NotFoundError("That conversation no longer exists.");
-  const kind = conversation.kind as ConversationKind;
+  if (runningTurns.has(conversationId)) throw new ConversationBusyError();
+  runningTurns.add(conversationId);
+  try {
+    return await runTurnLocked(conversationId, conversation.kind as ConversationKind, text, inputMode, client ?? getClaude());
+  } catch (err) {
+    // 400/413 from Claude here means the stored history itself is unusable.
+    if (err instanceof Anthropic2.APIError && (err.status === 400 || err.status === 413)) {
+      // eslint-disable-next-line no-console
+      console.error("[assistant] conversation rejected:", err.status, err.message);
+      throw new ConversationBrokenError();
+    }
+    throw err;
+  } finally {
+    runningTurns.delete(conversationId);
+  }
+}
+
+async function runTurnLocked(
+  conversationId: string,
+  kind: ConversationKind,
+  text: string,
+  inputMode: "VOICE" | "TYPED",
+  client: ClaudeLike
+): Promise<TurnResult> {
 
   const messages = await history(conversationId);
   const userMessage: MessageParam = { role: "user", content: `${await contextBlock(kind)}\n\n${text}` };
