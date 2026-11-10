@@ -2,9 +2,13 @@ import "dotenv/config";
 import { beforeEach, afterAll } from "vitest";
 import { prisma } from "../src/db";
 
+// Safety net: the tests below delete every table. Never let them near her data.
+if (!process.env.DATABASE_URL?.endsWith("test.db")) {
+  throw new Error(`Refusing to run tests against ${process.env.DATABASE_URL}; tests must use file:./test.db`);
+}
+
 beforeEach(async () => {
-  // Tests run against the local dev SQLite file, reset between tests.
-  // This is a throwaway dev database, not Supabase/production data.
+  // Tests run against prisma/test.db (see vitest.config.ts), reset between tests.
   await prisma.activityLog.deleteMany();
   await prisma.pushSubscription.deleteMany();
   await prisma.conversationMessage.deleteMany();

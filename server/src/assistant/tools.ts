@@ -29,7 +29,16 @@ export interface AssistantTool<S extends ZodTypeAny = ZodTypeAny> {
   description: string;
   input_schema: Anthropic.Beta.Messages.BetaTool["input_schema"];
   schema: S;
-  run(input: z.infer<S>, ctx: ToolContext): Promise<ToolContent | object>;
+  run(input: z.infer<S>, ctx: ToolContext): Promise<string | ToolBlocks | object>;
+}
+
+/**
+ * Explicit wrapper for tools that return real content blocks (a Drive PDF or
+ * photo). Anything else a tool returns is sent to Claude as JSON text, so data
+ * that merely has a "type" field can never be mistaken for a content block.
+ */
+export class ToolBlocks {
+  constructor(readonly blocks: Array<Anthropic.Beta.Messages.BetaTextBlockParam | Anthropic.Beta.Messages.BetaImageBlockParam | Anthropic.Beta.Messages.BetaRequestDocumentBlock>) {}
 }
 
 export function defineTool<S extends ZodTypeAny>(tool: AssistantTool<S>): AssistantTool<S> {
@@ -253,10 +262,8 @@ export async function runTool(name: string, input: unknown, ctx: ToolContext): P
   }
   try {
     const result = await tool.run(parsed.data, ctx);
-    if (typeof result === "string" || Array.isArray(result)) {
-      return { content: Array.isArray(result) && result.every((b: any) => typeof b === "object" && b?.type) ? (result as ToolContent) : JSON.stringify(result), isError: false };
-    }
-    return { content: JSON.stringify(result), isError: false };
+    if (result instanceof ToolBlocks) return { content: result.blocks, isError: false };
+    return { content: typeof result === "string" ? result : JSON.stringify(result), isError: false };
   } catch (err) {
     const message = (err as Error).message || "That did not work.";
     return { content: message.includes("No record") || (err as any).code === "P2025" ? "Not found — check the id with get_day_plan or list_reminders." : message, isError: true };
