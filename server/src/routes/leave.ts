@@ -4,21 +4,17 @@ import { draftLeaveLetter } from "../services/leaveLetterService";
 
 export const leaveRouter = Router();
 
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD");
 const draftSchema = z.object({
   audience: z.enum(["TEACHER", "STUDENT"]),
   names: z.array(z.string().min(1)).min(1),
-  leaveDate: z.coerce.date(),
+  fromDate: isoDate,
+  toDate: isoDate.optional(),
   reason: z.string().optional(),
   schoolName: z.string().optional(),
 });
 
-/** Draft only. The browser must show this unchanged and call /api/messaging/prepare then /confirm-send if she says Send. */
-leaveRouter.post("/draft", (req, res) => {
-  const parsed = draftSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-  try {
-    res.json(draftLeaveLetter(parsed.data));
-  } catch (err) {
-    res.status(400).json({ error: (err as Error).message });
-  }
+/** Draft only; the screen prepares it as a "Send?" preview if she wants to send it. */
+leaveRouter.post("/draft", async (req, res) => {
+  res.json(await draftLeaveLetter(draftSchema.parse(req.body)));
 });
