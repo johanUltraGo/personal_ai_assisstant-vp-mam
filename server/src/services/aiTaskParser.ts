@@ -57,7 +57,7 @@ export async function parseTaskFromText(
   const timezone = opts.timezone ?? process.env.SCHOOL_TIMEZONE ?? "Asia/Kolkata";
 
   const response = await client.messages.create({
-    model: process.env.ANTHROPIC_MODEL || "claude-sonnet-5",
+    model: process.env.ANTHROPIC_MODEL || "claude-opus-5-5",
     max_tokens: 1024,
     system:
       "You are a task-capture assistant for a school Vice Principal in India. " +
