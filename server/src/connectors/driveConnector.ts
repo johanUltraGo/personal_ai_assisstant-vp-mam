@@ -11,11 +11,12 @@ export interface DriveClient {
   readFile(fileId: string): Promise<DriveFile>;
 }
 
-class GoogleDriveApiClient implements DriveClient {
-  constructor(private readonly accessToken: string) {}
+export class GoogleDriveApiClient implements DriveClient {
+  constructor(private readonly accessToken: string | (() => Promise<string>)) {}
 
   async readFile(fileId: string): Promise<DriveFile> {
-    const headers = { Authorization: `Bearer ${this.accessToken}` };
+    const token = typeof this.accessToken === "string" ? this.accessToken : await this.accessToken();
+    const headers = { Authorization: `Bearer ${token}` };
     const metadataResponse = await fetch(
       `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=name,mimeType`,
       { headers }
@@ -43,7 +44,7 @@ class GoogleDriveApiClient implements DriveClient {
 export class DriveConnector implements Connector {
   readonly type = "drive";
 
-  constructor(private readonly accountLabel: string, private readonly client?: DriveClient) {}
+  constructor(readonly accountLabel: string, private readonly client?: DriveClient) {}
 
   health(): ConnectorHealth {
     if (this.client) {

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import * as calendarService from "../services/calendarService";
 import * as messagingService from "../services/messagingService";
-import { driveFromEnvironment } from "../connectors/driveConnector";
+import { driveConnector } from "../connectors/registry";
 
 export const calendarRouter = Router();
 
@@ -28,7 +28,7 @@ calendarRouter.post("/sync-drive", async (req, res) => {
   const parsed = syncSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   try {
-    res.json(await calendarService.syncCalendarFromDrive(driveFromEnvironment(), parsed.data.fileId));
+    res.json(await calendarService.syncCalendarFromDrive(await driveConnector(), parsed.data.fileId));
   } catch (err) {
     res.status(400).json({ error: (err as Error).message });
   }

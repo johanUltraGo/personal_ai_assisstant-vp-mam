@@ -174,3 +174,16 @@ model ActivityLog {
 
   @@index([at])
 }
+
+// A connected Google account (Gmail send + Drive read). Only the encrypted
+// refresh token is stored (AES-256-GCM with TOKEN_ENCRYPTION_KEY).
+model GoogleAccount {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  label           String?
+  scopes          String
+  refreshTokenEnc String
+  isDefault       Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  lastUsedAt      DateTime?
+}
