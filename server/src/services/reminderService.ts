@@ -23,6 +23,7 @@ export async function createReminder(input: CreateReminderInput) {
       fireAt: input.fireAt,
       taskId: input.taskId,
       repeatRule: input.repeatRule,
+      repeatAnchor: input.repeatRule ? input.fireAt : null,
       status: "PENDING",
     },
   });
@@ -42,6 +43,19 @@ export async function dueReminders(reference: Date = new Date()) {
 function nextOccurrence(fireAt: Date, rule: "DAILY" | "WEEKLY"): Date {
   const days = rule === "DAILY" ? 1 : 7;
   return new Date(fireAt.getTime() + days * 24 * 3600_000);
+}
+
+/**
+ * Spec §10: repeats happen only if she set them. The next occurrence is
+ * planned from the original time (repeatAnchor), once this one is used up —
+ * delivered or finally failed — so snoozes and retries never shift it.
+ */
+async function scheduleNextOccurrence(reminder: { label: string; fireAt: Date; taskId: string | null; repeatRule: string | null; repeatAnchor: Date | null }) {
+  if (reminder.repeatRule !== "DAILY" && reminder.repeatRule !== "WEEKLY") return;
+  let next = nextOccurrence(reminder.repeatAnchor ?? reminder.fireAt, reminder.repeatRule);
+  // If the server was off for days, skip occurrences already in the past.
+  while (next.getTime() < Date.now() - 60_000) next = nextOccurrence(next, reminder.repeatRule);
+  await createReminder({ label: reminder.label, fireAt: next, taskId: reminder.taskId ?? undefined, repeatRule: reminder.repeatRule });
 }
 
 /**
@@ -84,14 +98,7 @@ export async function fireReminder(reminderId: string, notifier: Notifier = new 
         // a reminder firing should never crash the pipeline over that.
       });
     }
-    if (reminder.repeatRule === "DAILY" || reminder.repeatRule === "WEEKLY") {
-      await createReminder({
-        label: reminder.label,
-        fireAt: nextOccurrence(reminder.fireAt, reminder.repeatRule),
-        taskId: reminder.taskId ?? undefined,
-        repeatRule: reminder.repeatRule,
-      });
-    }
+    await scheduleNextOccurrence(reminder);
     return updated;
   }
 
@@ -105,6 +112,8 @@ export async function fireReminder(reminderId: string, notifier: Notifier = new 
     data: { reminderId, eventType: "failed", details: `retry ${retryCount}/${MAX_RETRIES}` },
   });
   if (exhausted) {
+    // A failed day must not end a repeating reminder.
+    await scheduleNextOccurrence(reminder);
     await logActivity(
       "reminder.failed",
       `Could not deliver the reminder "${reminder.label}" after ${MAX_RETRIES} tries — it is shown in the app.`,
