@@ -2,6 +2,7 @@ import "dotenv/config";
 import { createApp } from "./app";
 import { start as startMorningListScheduler } from "./scheduler/morningListScheduler";
 import { start as startReminderScheduler } from "./scheduler/reminderScheduler";
+import { start as startDailyJobs } from "./scheduler/dailyJobs";
 
 const port = Number(process.env.PORT) || 4000;
 const app = createApp();
@@ -11,4 +12,5 @@ app.listen(port, () => {
   console.log(`Vice Principal AI server listening on http://localhost:${port}`);
   startMorningListScheduler();
   startReminderScheduler();
+  startDailyJobs();
 });

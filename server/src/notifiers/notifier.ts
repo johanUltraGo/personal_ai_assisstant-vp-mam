@@ -26,3 +26,8 @@ export class ConsoleNotifier implements Notifier {
     return true;
   }
 }
+
+/** Chooses how notifications reach her phone. Web Push replaces this in the notifications task. */
+export async function notifierFromEnvironment(): Promise<Notifier> {
+  return new ConsoleNotifier();
+}
