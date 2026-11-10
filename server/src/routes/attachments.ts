@@ -4,6 +4,8 @@ import * as attachmentService from "../services/attachmentService";
 
 export const attachmentsRouter = Router();
 
+const INLINE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf"]);
+
 /**
  * Receives one selected photo or document as raw bytes (the page sends each
  * selected file in turn). Stored only against the task; never shared.
@@ -31,8 +33,12 @@ attachmentsRouter.get("/", async (req, res) => {
 
 attachmentsRouter.get("/:id/file", async (req, res) => {
   const { attachment, stream } = await attachmentService.openAttachment(req.params.id);
-  res.setHeader("Content-Type", attachment.mimeType);
-  res.setHeader("Content-Disposition", `inline; filename="${attachment.originalName}"`);
+  // Only photos and PDFs open in the browser; everything else (HTML, SVG, …)
+  // downloads, and nothing served here may run script on the app's origin.
+  const inline = INLINE_TYPES.has(attachment.mimeType.toLowerCase());
+  res.setHeader("Content-Type", inline ? attachment.mimeType : "application/octet-stream");
+  res.setHeader("Content-Disposition", `${inline ? "inline" : "attachment"}; filename="${attachment.originalName}"`);
+  res.setHeader("Content-Security-Policy", "sandbox; default-src 'none'; img-src 'self'; style-src 'unsafe-inline'");
   res.setHeader("X-Content-Type-Options", "nosniff");
   stream.pipe(res);
 });

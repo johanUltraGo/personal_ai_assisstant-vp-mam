@@ -44,3 +44,27 @@ describe("attachment download and Drive links", () => {
     expect((await request(app).get("/api/attachments/nope/file")).status).toBe(404);
   });
 });
+
+describe("attachments cannot run as web pages", () => {
+  it("serves HTML and SVG as downloads in a sandbox, photos inline", async () => {
+    const request = (await import("supertest")).default;
+    const { createApp } = await import("../src/app");
+    const { prisma } = await import("../src/db");
+    const app = createApp();
+    const task = await prisma.task.create({
+      data: { title: "x", timeWindowStart: new Date(), timeWindowEnd: new Date(Date.now() + 60_000), status: "SCHEDULED" },
+    });
+    const upload = (type: string, name: string) =>
+      request(app).post(`/api/attachments?taskId=${task.id}`).set("Content-Type", type).set("X-File-Name", name).send(Buffer.from("<script>alert(1)</script>"));
+    for (const [type, name] of [["text/html", "a.html"], ["image/svg+xml", "b.svg"]]) {
+      const saved = await upload(type, name);
+      const res = await request(app).get(`/api/attachments/${saved.body.id}/file`);
+      expect(res.headers["content-disposition"]).toMatch(/^attachment/);
+      expect(res.headers["content-security-policy"]).toContain("sandbox");
+    }
+    const photo = await upload("image/png", "c.png");
+    const res = await request(app).get(`/api/attachments/${photo.body.id}/file`);
+    expect(res.headers["content-disposition"]).toMatch(/^inline/);
+    expect(res.headers["content-security-policy"]).toContain("sandbox");
+  });
+});
