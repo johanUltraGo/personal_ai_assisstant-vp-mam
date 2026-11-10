@@ -2,29 +2,31 @@ import { Router } from "express";
 import { z } from "zod";
 import * as contactService from "../services/contactService";
 import * as messagingService from "../services/messagingService";
-import { gmailFromEnvironment } from "../connectors/gmailConnector";
-import { whatsappFromEnvironment } from "../connectors/whatsappConnector";
+import { messagingConnectors } from "../connectors/registry";
 
 export const messagingRouter = Router();
 
 const createContactSchema = z.object({
-  displayName: z.string().min(1),
+  displayName: z.string().trim().min(1),
+  kind: z.enum(["PERSON", "GROUP"]).optional(),
   email: z.string().email().optional(),
-  whatsappNumber: z.string().optional(),
+  whatsappNumber: z.string().regex(/^\+?[\d\s-]{6,20}$/, "Use digits with country code, e.g. +91 98765 43210").optional(),
 });
 
 messagingRouter.post("/contacts", async (req, res) => {
-  const parsed = createContactSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-  res.status(201).json(await contactService.createContact(parsed.data));
+  res.status(201).json(await contactService.createContact(createContactSchema.parse(req.body)));
 });
 
 messagingRouter.get("/contacts", async (_req, res) => {
   res.json(await contactService.listContacts());
 });
 
+messagingRouter.delete("/contacts/:id", async (req, res) => {
+  res.json(await contactService.deleteContact(req.params.id));
+});
+
 messagingRouter.get("/resolve-recipient", async (req, res) => {
-  const name = String(req.query.name ?? "");
+  const name = String(req.query.name ?? "").trim();
   if (!name) return res.status(400).json({ error: "name query param is required" });
   res.json(await messagingService.resolveRecipient(name));
 });
@@ -34,47 +36,24 @@ const prepareSchema = z.object({
   channel: z.enum(["EMAIL", "WHATSAPP"]),
   subject: z.string().optional(),
   body: z.string().min(1),
+  calendarEventId: z.string().optional(),
 });
 
-/** Returns exactly what the "Send?" prompt should show — does not send. */
+/** Stores and returns exactly what the "Send?" question shows. Sends nothing. */
 messagingRouter.post("/prepare", async (req, res) => {
-  const parsed = prepareSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-  try {
-    res.json(await messagingService.prepareMessage(parsed.data));
-  } catch (err) {
-    res.status(400).json({ error: (err as Error).message });
-  }
+  res.json(await messagingService.prepareMessage(prepareSchema.parse(req.body)));
 });
 
-const confirmSendSchema = z.object({
-  channel: z.enum(["EMAIL", "WHATSAPP"]),
-  recipientContactId: z.string().min(1),
-  recipientDisplayName: z.string().min(1),
-  recipientAddress: z.string().min(1),
-  subject: z.string().optional(),
-  body: z.string().min(1),
+/** Her "Send" tap. Sends only the stored preview, once (spec §5). */
+messagingRouter.post("/pending/:id/send", async (req, res) => {
+  res.json(await messagingService.sendPending(req.params.id, await messagingConnectors()));
 });
 
-/** The only route that can actually send — takes exactly the
- * PreparedMessage /prepare returned, so the client passes that straight
- * back through once she says yes (spec §5). */
-messagingRouter.post("/confirm-send", async (req, res) => {
-  const parsed = confirmSendSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+messagingRouter.post("/pending/:id/cancel", async (req, res) => {
+  res.json(await messagingService.cancelPending(req.params.id));
+});
 
-  const connectors = {
-    gmail: gmailFromEnvironment(),
-    whatsapp: whatsappFromEnvironment(),
-  };
-
-  try {
-    // confirmSend always logs an audit row, even when the connector is
-    // not configured (status "BLOCKED") — the client should check
-    // result.status rather than relying on the HTTP status for that case.
-    const result = await messagingService.confirmSend(parsed.data, connectors);
-    res.json(result);
-  } catch (err) {
-    res.status(502).json({ error: (err as Error).message });
-  }
+messagingRouter.get("/sent", async (req, res) => {
+  const limit = Number(req.query.limit ?? 50);
+  res.json(await messagingService.listSent(Number.isFinite(limit) ? Math.min(limit, 200) : 50));
 });

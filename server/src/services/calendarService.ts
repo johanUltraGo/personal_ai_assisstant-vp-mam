@@ -54,10 +54,20 @@ export async function markPrompted(eventId: string) {
  * approved=true.
  */
 export async function recordDecision(eventId: string, approved: boolean) {
+  const event = await prisma.calendarEvent.findUniqueOrThrow({ where: { id: eventId } });
   return prisma.calendarEvent.update({
     where: { id: eventId },
-    data: { promptedAt: new Date(), notifiedAt: approved ? new Date() : null },
+    data: {
+      promptedAt: event.promptedAt ?? new Date(),
+      decision: approved ? "APPROVED" : "DECLINED",
+      decidedAt: new Date(),
+      notifiedAt: approved ? new Date() : null,
+    },
   });
+}
+
+export function getEvent(eventId: string) {
+  return prisma.calendarEvent.findUniqueOrThrow({ where: { id: eventId } });
 }
 
 export interface ImportedCalendarEvent extends SeedEventInput {}

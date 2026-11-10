@@ -2,8 +2,6 @@ import { Router } from "express";
 import { z } from "zod";
 import * as calendarService from "../services/calendarService";
 import * as messagingService from "../services/messagingService";
-import { gmailFromEnvironment } from "../connectors/gmailConnector";
-import { whatsappFromEnvironment } from "../connectors/whatsappConnector";
 import { driveFromEnvironment } from "../connectors/driveConnector";
 
 export const calendarRouter = Router();
@@ -42,45 +40,30 @@ calendarRouter.get("/due-prompts", async (_req, res) => {
 
 const respondSchema = z.object({
   approved: z.boolean(),
-  // Required only when approved — which contact ("the parents' group")
-  // to notify. Not hardcoded, since the spec doesn't define how that
-  // group is represented; the caller must already have that contact.
+  // When approved: which contact ("the parents' group") and the notice text.
   contactId: z.string().optional(),
+  channel: z.enum(["EMAIL", "WHATSAPP"]).optional(),
   subject: z.string().optional(),
   body: z.string().optional(),
 });
 
-/** Her answer to "Shall I send a notification to the parents' group?"
- * (spec §6). On approval, this reuses the exact same prepare+confirm
- * send path as every other message — there is no separate, looser send
- * path for calendar notifications. */
+/** Her answer to "Shall I send a notification to the parents' group?" (spec §6).
+ * Yes prepares the notice as a normal "Send?" preview; the event is marked
+ * notified only when she actually sends it. */
 calendarRouter.post("/events/:id/respond", async (req, res) => {
-  const parsed = respondSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
-
-  if (!parsed.data.approved) {
-    const updated = await calendarService.recordDecision(req.params.id, false);
-    return res.json({ event: updated, message: null });
+  const parsed = respondSchema.parse(req.body);
+  if (!parsed.approved) {
+    return res.json({ event: await calendarService.recordDecision(req.params.id, false), pending: null });
   }
-
-  if (!parsed.data.contactId || !parsed.data.body) {
+  if (!parsed.contactId || !parsed.body) {
     return res.status(400).json({ error: "contactId and body are required when approved is true" });
   }
-
-  try {
-    const prepared = await messagingService.prepareMessage({
-      contactId: parsed.data.contactId,
-      channel: "EMAIL",
-      subject: parsed.data.subject,
-      body: parsed.data.body,
-    });
-    const sent = await messagingService.confirmSend(prepared, {
-      gmail: gmailFromEnvironment(),
-      whatsapp: whatsappFromEnvironment(),
-    });
-    const updated = await calendarService.recordDecision(req.params.id, (sent as any).status === "SENT");
-    res.json({ event: updated, message: sent });
-  } catch (err) {
-    res.status(400).json({ error: (err as Error).message });
-  }
+  const pending = await messagingService.prepareMessage({
+    contactId: parsed.contactId,
+    channel: parsed.channel ?? "EMAIL",
+    subject: parsed.subject,
+    body: parsed.body,
+    calendarEventId: req.params.id,
+  });
+  res.json({ event: await calendarService.getEvent(req.params.id), pending });
 });

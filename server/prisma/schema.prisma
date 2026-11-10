@@ -105,6 +105,7 @@ model ReminderLog {
 
 model Contact {
   id        String   @id @default(cuid())
+  kind      String   @default("PERSON") // PERSON | GROUP (parents' group, teachers' group)
   displayName String
   email     String?
   whatsappNumber String?
@@ -117,9 +118,30 @@ model MessageSent {
   recipient   String
   subject     String?
   body        String
-  status      String // SENT | BLOCKED | FAILED
+  status      String // SENT | BLOCKED | FAILED | HANDED_OFF
   blockReason String?
   confirmedAt DateTime @default(now())
+  pendingMessageId String?
+  fromAccount String?
+  handoffUrl  String?
+}
+
+// A message exactly as it was shown to her with "Send?" (design §4). Only a
+// row here can be sent, only once, and only before it expires.
+model PendingMessage {
+  id               String    @id @default(cuid())
+  channel          String // EMAIL | WHATSAPP
+  contactId        String
+  recipientName    String
+  recipientKind    String
+  recipientAddress String?
+  subject          String?
+  body             String
+  calendarEventId  String?
+  createdAt        DateTime  @default(now())
+  expiresAt        DateTime
+  usedAt           DateTime?
+  cancelledAt      DateTime?
 }
 
 // Phase 4: school calendar awareness (spec §6). Rows here are produced
@@ -135,6 +157,8 @@ model CalendarEvent {
   type        String // HOLIDAY | EVENT
   promptedAt  DateTime?
   notifiedAt  DateTime?
+  decision    String? // APPROVED | DECLINED
+  decidedAt   DateTime?
   createdAt   DateTime  @default(now())
 }
 

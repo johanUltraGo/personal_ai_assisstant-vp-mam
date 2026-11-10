@@ -12,6 +12,7 @@ beforeEach(async () => {
   await prisma.taskHistory.deleteMany();
   await prisma.task.deleteMany();
   await prisma.messageSent.deleteMany();
+  await prisma.pendingMessage.deleteMany();
   await prisma.contact.deleteMany();
   await prisma.calendarEvent.deleteMany();
 });
