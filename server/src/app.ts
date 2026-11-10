@@ -10,12 +10,16 @@ import { leaveRouter } from "./routes/leave";
 import { connectorsRouter } from "./routes/connectors";
 import { attachmentsRouter } from "./routes/attachments";
 import { errorHandler } from "./http/errors";
+import { authRouter, requireAccess } from "./http/auth";
 
 export function createApp() {
   const app = express();
   app.use(express.json());
 
   app.get("/health", (_req, res) => res.json({ ok: true }));
+
+  app.use("/api/auth", authRouter);
+  app.use("/api", requireAccess);
 
   app.use("/api/tasks", tasksRouter);
   app.use("/api/morning-list", morningListRouter);
