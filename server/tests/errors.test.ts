@@ -24,4 +24,10 @@ describe("central error handling", () => {
       .send("{not json");
     expect(res.status).toBe(400);
   });
+
+  it("zod validation error returns 400 with field errors", async () => {
+    const res = await request(app).post("/api/tasks").send({});
+    expect(res.status).toBe(400);
+    expect(JSON.stringify(res.body.error)).toContain("title");
+  });
 });
