@@ -3,7 +3,6 @@ import path from "path";
 import { tasksRouter } from "./routes/tasks";
 import { morningListRouter } from "./routes/morningList";
 import { remindersRouter } from "./routes/reminders";
-import { aiRouter } from "./routes/ai";
 import { messagingRouter } from "./routes/messaging";
 import { calendarRouter } from "./routes/calendar";
 import { leaveRouter } from "./routes/leave";
@@ -29,7 +28,6 @@ export function createApp() {
   app.use("/api/tasks", tasksRouter);
   app.use("/api/morning-list", morningListRouter);
   app.use("/api/reminders", remindersRouter);
-  app.use("/api/ai", aiRouter);
   app.use("/api/messaging", messagingRouter);
   app.use("/api/calendar", calendarRouter);
   app.use("/api/leave", leaveRouter);

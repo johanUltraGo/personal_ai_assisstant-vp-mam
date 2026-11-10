@@ -2,10 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Vice Principal AI — Tasks</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vice Principal AI</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <div id="login-overlay" hidden>
+    <form id="login-form" class="login-box">
+      <h2>Enter your access PIN</h2>
+      <input type="password" id="login-pin" inputmode="numeric" autocomplete="current-password" required />
+      <button type="submit">Open</button>
+      <p id="login-error" class="error" aria-live="polite"></p>
+    </form>
+  </div>
+
   <header>
     <h1>Vice Principal AI</h1>
     <p class="subtitle">Your daily planning, reminders, and reviewed communications</p>
@@ -13,54 +23,79 @@
 
   <main>
     <section id="assistant-section">
-      <h2>Speak or type a task</h2>
-      <p class="hint">Say it in Tamil, English, or a mix. You will always review the task before it is saved.</p>
-      <textarea id="assistant-text" rows="3" placeholder="For example: Tomorrow at 10, call Mrs Iyer about fee payment."></textarea>
+      <h2>Talk to your assistant</h2>
+      <p class="hint">Speak or type in Tamil, English, or both. Nothing is sent to anyone until you tap Send.</p>
+      <div id="conversation" class="conversation" aria-live="polite"></div>
+      <textarea id="assistant-text" rows="3" placeholder="For example: Remind me at 4 to call Mrs Iyer about the fee."></textarea>
       <div class="button-row">
-        <button id="listen-button" type="button">🎙 Start listening</button>
-        <button id="parse-task-button" type="button">Make task draft</button>
+        <button id="listen-button" type="button">🎙 Speak</button>
+        <button id="assistant-send" type="button">Ask</button>
+        <button id="plan-tomorrow" type="button">Plan tomorrow</button>
+        <button id="new-conversation" type="button" class="secondary">New conversation</button>
       </div>
       <p id="speech-status" class="hint" aria-live="polite"></p>
-      <div id="task-draft" class="preview" hidden></div>
+      <div id="assistant-cards"></div>
+    </section>
+
+    <section id="morning-list-section">
+      <h2>Today's work list <span id="confirmed-badge" class="badge" hidden>Confirmed</span></h2>
+      <ul id="morning-list"></ul>
+      <div class="button-row">
+        <button id="confirm-list" type="button">Looks good</button>
+        <button id="change-list" type="button">Change…</button>
+        <button id="refresh-morning-list" type="button" class="secondary">Refresh</button>
+      </div>
+    </section>
+
+    <section id="alerts-section">
+      <h2>Needs your answer</h2>
+      <div id="alerts"></div>
+    </section>
+
+    <section id="messages-section">
+      <h2>Messages</h2>
+      <form id="compose-form">
+        <label>To (type a name) <input type="text" id="compose-to" list="contact-names" required autocomplete="off" /></label>
+        <datalist id="contact-names"></datalist>
+        <label>Send by
+          <select id="compose-channel"><option value="EMAIL">Email</option><option value="WHATSAPP">WhatsApp</option></select>
+        </label>
+        <label>Subject (email) <input type="text" id="compose-subject" /></label>
+        <label>Message <textarea id="compose-body" rows="4" required></textarea></label>
+        <button type="submit">Prepare</button>
+      </form>
+      <div id="compose-cards"></div>
+      <details>
+        <summary>Contacts and groups</summary>
+        <ul id="contacts-list"></ul>
+        <form id="contact-form" class="inline-form">
+          <label>Name <input type="text" id="contact-name" required placeholder="e.g. Parents group – Class 8" /></label>
+          <label>Type <select id="contact-kind"><option value="PERSON">Person</option><option value="GROUP">Group</option></select></label>
+          <label>Email <input type="email" id="contact-email" /></label>
+          <label>WhatsApp number <input type="tel" id="contact-whatsapp" placeholder="+91 98765 43210" /></label>
+          <button type="submit">Add contact</button>
+        </form>
+      </details>
+      <details>
+        <summary>Sent messages</summary>
+        <ul id="sent-list"></ul>
+      </details>
     </section>
 
     <section id="leave-section">
-      <h2>Draft a leave notice</h2>
-      <p class="hint">This creates a draft only. It cannot send anything by itself.</p>
+      <h2>Leave notice</h2>
+      <p class="hint">Weekends and school holidays are left out automatically.</p>
       <form id="leave-form">
         <label>For
           <select id="leave-audience"><option value="TEACHER">Teachers</option><option value="STUDENT">Student / parent</option></select>
         </label>
         <label>Name(s), separated by commas <input type="text" id="leave-names" required /></label>
-        <label>Leave date <input type="date" id="leave-date" required /></label>
+        <label>From <input type="date" id="leave-from" required /></label>
+        <label>To (optional) <input type="date" id="leave-to" /></label>
         <label>Reason (optional) <input type="text" id="leave-reason" /></label>
-        <label>School name (optional) <input type="text" id="leave-school" /></label>
         <button type="submit">Create draft</button>
       </form>
-      <div id="leave-draft" class="preview" hidden></div>
-    </section>
-
-    <section id="connections-section">
-      <h2>Connections</h2>
-      <button id="refresh-connections" type="button">Check connection status</button>
-      <ul id="connections-list"></ul>
-    </section>
-
-    <section id="attachment-section">
-      <h2>Attach a photo or document to a task</h2>
-      <p class="hint">The file stays with the selected task. It is not shared until you separately prepare and confirm a message.</p>
-      <form id="attachment-form">
-        <label>Selected task <input type="text" id="attachment-task-id" required readonly placeholder="Choose Attach file beside a task" /></label>
-        <label>Choose file <input type="file" id="attachment-file" required accept="image/*,.pdf,.doc,.docx,.txt" /></label>
-        <button type="submit">Attach file</button>
-      </form>
-      <p id="attachment-status" class="hint" aria-live="polite"></p>
-    </section>
-
-    <section id="morning-list-section">
-      <h2>Today's work list</h2>
-      <button id="refresh-morning-list">Refresh</button>
-      <ul id="morning-list"></ul>
+      <div id="leave-draft" hidden></div>
     </section>
 
     <section id="new-task-section">
@@ -94,7 +129,7 @@
 
     <section id="reminders-section">
       <h2>Reminders</h2>
-      <button id="refresh-reminders">Refresh</button>
+      <button id="refresh-reminders" type="button" class="secondary">Refresh</button>
       <table id="reminders-table">
         <thead><tr><th>When</th><th>Label</th><th>Status</th><th>Actions</th></tr></thead>
         <tbody></tbody>
@@ -103,16 +138,59 @@
 
     <section id="all-tasks-section">
       <h2>All tasks</h2>
-      <button id="refresh-all-tasks">Refresh</button>
+      <button id="refresh-all-tasks" type="button" class="secondary">Refresh</button>
       <table id="tasks-table">
-        <thead>
-          <tr><th>Title</th><th>Category</th><th>Window</th><th>Status</th><th>Actions</th></tr>
-        </thead>
+        <thead><tr><th>Title</th><th>Category</th><th>Window</th><th>Status</th><th>Actions</th></tr></thead>
         <tbody></tbody>
       </table>
     </section>
+
+    <section id="attachment-section">
+      <h2>Attach photos or documents to a task</h2>
+      <p class="hint">Files stay with the task. They are not shared until you prepare and send a message.</p>
+      <form id="attachment-form">
+        <label>Selected task <input type="text" id="attachment-task-title" readonly placeholder="Choose Attach beside a task" /></label>
+        <input type="hidden" id="attachment-task-id" />
+        <label>Photos or files <input type="file" id="attachment-file" multiple accept="image/*,.pdf,.doc,.docx,.txt" /></label>
+        <label>…or a Google Drive link <input type="url" id="attachment-drive-link" placeholder="https://drive.google.com/…" /></label>
+        <button type="submit">✓ Attach</button>
+      </form>
+      <p id="attachment-status" class="hint" aria-live="polite"></p>
+      <ul id="attachment-list"></ul>
+    </section>
+
+    <section id="calendar-section">
+      <h2>School calendar</h2>
+      <form id="calendar-sync-form" class="inline-form">
+        <label>Drive link (optional if set on the server) <input type="text" id="calendar-drive-link" /></label>
+        <button type="submit">Check Drive calendar now</button>
+      </form>
+      <label>…or upload the calendar file (.ics, .csv, .json) <input type="file" id="calendar-file" accept=".ics,.csv,.json,text/*" /></label>
+      <p id="calendar-status" class="hint" aria-live="polite"></p>
+      <ul id="calendar-list"></ul>
+    </section>
+
+    <section id="connections-section">
+      <h2>Connections</h2>
+      <ul id="connections-list"></ul>
+      <h3>Google accounts (Gmail and Drive)</h3>
+      <ul id="google-accounts"></ul>
+      <form id="google-connect-form" class="inline-form">
+        <label>Label <input type="text" id="google-label" placeholder="e.g. School, Personal" /></label>
+        <button type="submit">Connect Google account</button>
+      </form>
+      <h3>Phone notifications</h3>
+      <button id="enable-notifications" type="button">Turn on notifications on this phone</button>
+      <p id="notification-status" class="hint" aria-live="polite"></p>
+    </section>
+
+    <section id="activity-section">
+      <h2>What I've been doing</h2>
+      <button id="refresh-activity" type="button" class="secondary">Refresh</button>
+      <ul id="activity-list"></ul>
+    </section>
   </main>
 
-  <script src="app.js"></script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
