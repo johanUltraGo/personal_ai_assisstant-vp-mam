@@ -1,5 +1,6 @@
 import cron, { ScheduledTask } from "node-cron";
 import { runDueReminders } from "../services/reminderService";
+import { notifierFromEnvironment } from "../notifiers/notifier";
 
 /** Due-reminder check every minute (spec §10). Not restricted to the
  * 9:00 AM–6:00 PM connector-alert window (spec §7) — that window applies
@@ -8,7 +9,7 @@ import { runDueReminders } from "../services/reminderService";
  * including a week ahead. */
 export function start(): ScheduledTask {
   return cron.schedule("* * * * *", () => {
-    runDueReminders().catch((err) => {
+    notifierFromEnvironment().then((notifier) => runDueReminders(new Date(), notifier)).catch((err) => {
       // eslint-disable-next-line no-console
       console.error("[reminders] due-check failed:", err);
     });

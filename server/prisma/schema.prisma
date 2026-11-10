@@ -228,3 +228,13 @@ model DayPlanProposal {
   createdAt      DateTime  @default(now())
   savedAt        DateTime?
 }
+
+// A phone/browser that agreed to receive notifications (Web Push, spec §10).
+model PushSubscription {
+  id            String    @id @default(cuid())
+  endpoint      String    @unique
+  p256dh        String
+  auth          String
+  createdAt     DateTime  @default(now())
+  lastSuccessAt DateTime?
+}

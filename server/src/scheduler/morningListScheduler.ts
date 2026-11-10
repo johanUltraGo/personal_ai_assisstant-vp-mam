@@ -1,15 +1,17 @@
 import cron, { ScheduledTask } from "node-cron";
 import { buildMorningList, schoolTimezone } from "../services/morningListService";
-import { ConsoleNotifier } from "../notifiers/notifier";
-
-const notifier = new ConsoleNotifier();
+import { notifierFromEnvironment } from "../notifiers/notifier";
 
 export async function runMorningListJob() {
   const list = await buildMorningList();
+  const first = list.tasks.slice(0, 3).map((t) => t.title).join(", ");
+  const notifier = await notifierFromEnvironment();
   await notifier.send({
     title: "Your work list for today",
-    body: `${list.tasks.length} task(s) for ${list.date}`,
-    data: { date: list.date ?? "" },
+    body: list.tasks.length
+      ? `${list.tasks.length} task(s): ${first}${list.tasks.length > 3 ? "…" : ""}. Tap to confirm or change.`
+      : "Nothing is scheduled today.",
+    data: { date: list.date ?? "", url: "/#morning-list-section" },
   });
   return list;
 }

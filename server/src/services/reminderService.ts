@@ -58,7 +58,7 @@ export async function fireReminder(reminderId: string, notifier: Notifier = new 
 
   let delivered = false;
   try {
-    delivered = await notifier.send({ title: "Reminder", body: reminder.label });
+    delivered = await notifier.send({ title: "Reminder", body: reminder.label, data: { reminderId, url: "/#reminders-section" } });
   } catch {
     delivered = false;
   }
@@ -69,8 +69,13 @@ export async function fireReminder(reminderId: string, notifier: Notifier = new 
       data: { status: "SENT" },
     });
     await prisma.reminderLog.create({ data: { reminderId, eventType: "sent" } });
-    await prisma.reminderLog.create({ data: { reminderId, eventType: "delivered" } });
-    const updated = await prisma.reminder.update({ where: { id: reminderId }, data: { status: "DELIVERED" } });
+    // Web Push confirms delivery later from the phone (markDelivered); the
+    // console stand-in counts as delivered at once.
+    let updated = await prisma.reminder.findUniqueOrThrow({ where: { id: reminderId } });
+    if (notifier.confirmsDelivery !== false) {
+      await prisma.reminderLog.create({ data: { reminderId, eventType: "delivered" } });
+      updated = await prisma.reminder.update({ where: { id: reminderId }, data: { status: "DELIVERED" } });
+    }
     await logActivity("reminder.sent", `Reminded you: "${reminder.label}"`, { type: "Reminder", id: reminderId });
 
     if (reminder.taskId) {
@@ -107,6 +112,13 @@ export async function fireReminder(reminderId: string, notifier: Notifier = new 
     );
   }
   return updated;
+}
+
+/** Called by her phone when it has shown the reminder (spec §10: "logs sent and delivered status"). */
+export async function markDelivered(reminderId: string) {
+  const claim = await prisma.reminder.updateMany({ where: { id: reminderId, status: "SENT" }, data: { status: "DELIVERED" } });
+  if (claim.count > 0) await prisma.reminderLog.create({ data: { reminderId, eventType: "delivered" } });
+  return prisma.reminder.findUniqueOrThrow({ where: { id: reminderId } });
 }
 
 export async function runDueReminders(reference: Date = new Date(), notifier: Notifier = new ConsoleNotifier()) {

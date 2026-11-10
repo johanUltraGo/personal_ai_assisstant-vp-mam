@@ -5,21 +5,20 @@ export interface NotificationPayload {
 }
 
 export interface Notifier {
-  /** Returns true if delivery succeeded. Must never throw for a normal
-   * delivery failure — throw only for programmer error. */
+  /** Returns true if the notification was accepted for delivery. Must never
+   * throw for a normal delivery failure — throw only for programmer error. */
   send(payload: NotificationPayload): Promise<boolean>;
+  /** False when the phone confirms delivery separately (Web Push). */
+  readonly confirmsDelivery?: boolean;
 }
 
 /**
- * Phase 1/2 default: logs to the server console and is always
- * "delivered". This stands in for real phone push (Firebase Cloud
- * Messaging) until a Firebase project + device tokens are available —
- * see planning.md §11 (hosting/credentials still to be confirmed).
- * Swapping in a real push notifier later means implementing this same
- * Notifier interface; nothing else in the reminder/morning-list code
- * needs to change.
+ * Development stand-in: logs to the server console and counts as delivered.
+ * Used whenever Web Push (VAPID keys) is not configured.
  */
 export class ConsoleNotifier implements Notifier {
+  readonly confirmsDelivery = true;
+
   async send(payload: NotificationPayload): Promise<boolean> {
     // eslint-disable-next-line no-console
     console.log(`[notify] ${payload.title}: ${payload.body}`, payload.data ?? {});
@@ -27,7 +26,19 @@ export class ConsoleNotifier implements Notifier {
   }
 }
 
-/** Chooses how notifications reach her phone. Web Push replaces this in the notifications task. */
+/** Web Push when VAPID keys are set (design §9), otherwise the console. */
 export async function notifierFromEnvironment(): Promise<Notifier> {
-  return new ConsoleNotifier();
+  const publicKey = process.env.VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  if (!publicKey || !privateKey) return new ConsoleNotifier();
+  const { WebPushNotifier } = await import("./webPushNotifier");
+  const webpush = (await import("web-push")).default;
+  try {
+    webpush.setVapidDetails(process.env.VAPID_SUBJECT || "mailto:admin@example.com", publicKey, privateKey);
+  } catch (err) {
+    // Invalid keys: notifications will fail and reminders surface as FAILED in the app.
+    // eslint-disable-next-line no-console
+    console.error("[push] VAPID keys are invalid:", (err as Error).message);
+  }
+  return new WebPushNotifier();
 }
