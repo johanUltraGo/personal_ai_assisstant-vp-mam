@@ -137,3 +137,16 @@ model CalendarEvent {
   notifiedAt  DateTime?
   createdAt   DateTime  @default(now())
 }
+
+// What the assistant and its scheduled jobs did, in plain words, so she can
+// ask "what are you doing?" (spec §9). Append-only.
+model ActivityLog {
+  id      String   @id @default(cuid())
+  at      DateTime @default(now())
+  kind    String
+  summary String
+  refType String?
+  refId   String?
+
+  @@index([at])
+}

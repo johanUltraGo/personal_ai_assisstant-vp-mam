@@ -1,6 +1,7 @@
 import { DateTime } from "luxon";
 import { prisma } from "../db";
 import * as taskService from "./taskService";
+import { logActivity } from "./activityService";
 
 const DEFAULT_TIMEZONE = "Asia/Kolkata";
 
@@ -60,7 +61,7 @@ export async function carryForwardUnfinishedTasks(reference: Date = new Date()) 
  * compiles the list — delivery (push notification) is Phase 2's concern.
  */
 export async function buildMorningList(reference: Date = new Date()) {
-  await carryForwardUnfinishedTasks(reference);
+  const carried = await carryForwardUnfinishedTasks(reference);
   const today = startOfDay(reference);
   const tomorrow = today.plus({ days: 1 });
   const tasks = await prisma.task.findMany({
@@ -70,6 +71,11 @@ export async function buildMorningList(reference: Date = new Date()) {
     },
     orderBy: { timeWindowStart: "asc" },
   });
+  await logActivity(
+    "morning_list.built",
+    `Prepared the work list for ${today.toISODate()}: ${tasks.length} task(s)` +
+      (carried.length ? `, ${carried.length} carried over from earlier days.` : ".")
+  );
   return {
     date: today.toISODate(),
     generatedAt: new Date().toISOString(),

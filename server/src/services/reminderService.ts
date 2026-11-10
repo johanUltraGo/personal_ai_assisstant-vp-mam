@@ -1,6 +1,7 @@
 import { prisma } from "../db";
 import { Notifier, ConsoleNotifier } from "../notifiers/notifier";
 import * as taskService from "./taskService";
+import { logActivity } from "./activityService";
 
 const MAX_RETRIES = 3;
 
@@ -70,6 +71,7 @@ export async function fireReminder(reminderId: string, notifier: Notifier = new 
     await prisma.reminderLog.create({ data: { reminderId, eventType: "sent" } });
     await prisma.reminderLog.create({ data: { reminderId, eventType: "delivered" } });
     const updated = await prisma.reminder.update({ where: { id: reminderId }, data: { status: "DELIVERED" } });
+    await logActivity("reminder.sent", `Reminded you: "${reminder.label}"`, { type: "Reminder", id: reminderId });
 
     if (reminder.taskId) {
       await taskService.markReminderSent(reminder.taskId).catch(() => {
@@ -97,6 +99,13 @@ export async function fireReminder(reminderId: string, notifier: Notifier = new 
   await prisma.reminderLog.create({
     data: { reminderId, eventType: "failed", details: `retry ${retryCount}/${MAX_RETRIES}` },
   });
+  if (exhausted) {
+    await logActivity(
+      "reminder.failed",
+      `Could not deliver the reminder "${reminder.label}" after ${MAX_RETRIES} tries — it is shown in the app.`,
+      { type: "Reminder", id: reminderId }
+    );
+  }
   return updated;
 }
 

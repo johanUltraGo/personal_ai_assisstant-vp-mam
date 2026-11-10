@@ -11,6 +11,7 @@ import { connectorsRouter } from "./routes/connectors";
 import { attachmentsRouter } from "./routes/attachments";
 import { errorHandler } from "./http/errors";
 import { authRouter, requireAccess } from "./http/auth";
+import { activityRouter } from "./routes/activity";
 
 export function createApp() {
   const app = express();
@@ -30,6 +31,7 @@ export function createApp() {
   app.use("/api/leave", leaveRouter);
   app.use("/api/connectors", connectorsRouter);
   app.use("/api/attachments", attachmentsRouter);
+  app.use("/api/activity", activityRouter);
 
   // Minimal functional web UI (stand-in secondary screen until the
   // native Android client is built for Phase 4's power-button goal —
