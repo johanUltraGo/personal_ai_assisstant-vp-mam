@@ -216,3 +216,15 @@ model DayPlanConfirmation {
   confirmedAt DateTime @default(now())
   via         String // BUTTON | ASSISTANT
 }
+
+// A plan the assistant proposed in the evening talk (spec §3). She edits it on
+// screen and saves; saving creates the tasks. Older drafts are kept, discarded.
+model DayPlanProposal {
+  id             String    @id @default(cuid())
+  conversationId String?
+  planDate       String // YYYY-MM-DD
+  itemsJson      String
+  status         String    @default("DRAFT") // DRAFT | SAVED | DISCARDED
+  createdAt      DateTime  @default(now())
+  savedAt        DateTime?
+}

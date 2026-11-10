@@ -14,6 +14,7 @@ import { authRouter, requireAccess } from "./http/auth";
 import { activityRouter } from "./routes/activity";
 import { googleRouter } from "./routes/google";
 import { assistantRouter } from "./routes/assistant";
+import { plansRouter } from "./routes/plans";
 
 export function createApp() {
   const app = express();
@@ -36,6 +37,7 @@ export function createApp() {
   app.use("/api/activity", activityRouter);
   app.use("/api/google", googleRouter);
   app.use("/api/assistant", assistantRouter);
+  app.use("/api/plans", plansRouter);
 
   // Minimal functional web UI (stand-in secondary screen until the
   // native Android client is built for Phase 4's power-button goal —

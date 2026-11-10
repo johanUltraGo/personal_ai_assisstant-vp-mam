@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
 import { CONVERSATION_KINDS, conversationTranscript, runTurn, startConversation } from "../assistant/agent";
-import "../assistant/registerFeatureTools";
 
 export const assistantRouter = Router();
 

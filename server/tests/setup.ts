@@ -9,6 +9,7 @@ beforeEach(async () => {
   await prisma.conversationMessage.deleteMany();
   await prisma.conversation.deleteMany();
   await prisma.dayPlanConfirmation.deleteMany();
+  await prisma.dayPlanProposal.deleteMany();
   await prisma.googleAccount.deleteMany();
   await prisma.attachment.deleteMany();
   await prisma.reminderLog.deleteMany();

@@ -1,3 +1,3 @@
-// Feature modules add their assistant tools by importing registerTool from
-// ./tools. Importing them here keeps the full tool list fixed per process.
-export {};
+// Feature modules add their assistant tools with registerTool. Importing them
+// here keeps the full tool list fixed for the life of the process.
+import "./planTool";

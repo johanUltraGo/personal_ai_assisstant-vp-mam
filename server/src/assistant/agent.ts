@@ -6,6 +6,7 @@ import { NotFoundError } from "../http/errors";
 import { schoolTimezone, startOfDay, tasksForDay } from "../services/morningListService";
 import { SYSTEM_PROMPT } from "./prompt";
 import { Card, runTool, toolDefinitions } from "./tools";
+import "./registerFeatureTools";
 
 type MessageParam = Anthropic.Beta.Messages.BetaMessageParam;
 type ContentBlock = Anthropic.Beta.Messages.BetaContentBlock;
