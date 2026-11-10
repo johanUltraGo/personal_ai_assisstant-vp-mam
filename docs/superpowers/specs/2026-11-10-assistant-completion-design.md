@@ -34,7 +34,7 @@ The foundation (tasks, reminders, morning list, drafts) works, but the parts tha
 ### 3.1 Shape
 - One conversation API: `POST /api/assistant/conversations {kind}` then `POST /api/assistant/conversations/:id/messages {text, inputMode}`.
 - Kinds: `GENERAL`, `EVENING_PLAN`, `MORNING_REPLY`. Same tools for every kind; the kind changes only the instructions she sees acted on.
-- Each turn runs a manual tool loop (max 8 model calls). The reply returns the assistant's text plus **cards** for the screen: `send` (a prepared message awaiting "Send?"), `plan` (an editable day plan), `changed` (what was created/moved).
+- Each turn runs a manual tool loop (max 8 model calls). Replies to spoken requests are read aloud by the browser. The reply returns the assistant's text plus **cards** for the screen: `send` (a prepared message awaiting "Send?"), `plan` (an editable day plan), `changed` (what was created/moved).
 
 ### 3.2 Claude settings
 - Model `claude-opus-5-5`, override with `ANTHROPIC_MODEL`. SDK `@anthropic-ai/sdk` 1.7 (API version 2026-10-21).
@@ -80,7 +80,7 @@ Reply in the language mix she used. Never invent times, contacts or addresses �
 - Not set → `/api` answers only requests from the same computer that did not come through a proxy. **Her phone therefore needs a PIN.**
 
 ## 6. Daily rhythm and jobs
-- Every minute: due reminders. 08:55: calendar sync (if `SCHOOL_CALENDAR_FILE_ID`). 09:00: morning list (carry-over, push), then event alerts (push). On startup: calendar sync, and event alerts if between 09:00 and 18:00.
+- Every minute: due reminders. 08:55: calendar sync (if `SCHOOL_CALENDAR_FILE_ID`). 09:00: morning list (carry-over, push); 09:01: event alerts (push). On startup: calendar sync, and event alerts if between 09:00 and 18:00.
 - Event alerts cover events from tomorrow up to two days ahead not yet asked about, so a missed 09:00 run still asks a day later **(call)**. Yes → a ready-made notice to edit and "Send?"; No → recorded.
 - Evening plan save turns each item into a task (DRAFTED → SCHEDULED, both logged). Morning confirmation is stored per date.
 
