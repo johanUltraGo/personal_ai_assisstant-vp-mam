@@ -11,7 +11,7 @@ npm install
 cp .env.example .env          # then fill in what you need (below)
 npx prisma migrate deploy     # creates prisma/dev.db
 npm run dev                   # http://localhost:4000
-npm test                      # 107 tests, no network or keys needed
+npm test                      # 112 tests, no network or keys needed
 npm run typecheck
 ```
 
@@ -36,7 +36,9 @@ Everything works without any keys except: the assistant (needs `ANTHROPIC_API_KE
 
 **6. WhatsApp.** Works without setup: after *Send*, WhatsApp opens with the message typed and she taps send (for groups she picks the group). Optional Meta Business Cloud API (`WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`) sends automatically to individuals — but only free text within 24 hours of their last message; otherwise the app offers the hand-off link.
 
-**7. Contacts.** Add people and groups (e.g. "Parents group – Class 8", "Teachers group") under Messages → Contacts. The assistant only sends to contacts that exist here.
+**7. Backups.** Every day at 02:00 the server saves a consistent copy of the database as `backups/vp-YYYY-MM-DD.db` (change the folder with `BACKUP_DIR`, how many days to keep with `BACKUP_KEEP_DAYS`, default 14). Point `BACKUP_DIR` at another disk or a synced folder (e.g. Google Drive for desktop). To restore: stop the server, copy a backup over `prisma/dev.db`, start again.
+
+**8. Contacts.** Add people and groups (e.g. "Parents group – Class 8", "Teachers group") under Messages → Contacts. The assistant only sends to contacts that exist here.
 
 ## Safety rules built into the code
 - Only `POST /api/messaging/pending/:id/send` can send, and only a preview the server stored and showed, once, within 30 minutes. The assistant has no send tool.

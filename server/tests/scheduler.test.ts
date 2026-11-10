@@ -6,7 +6,7 @@ import { start as startMorningList } from "../src/scheduler/morningListScheduler
 describe("schedulers", () => {
   it("daily jobs register in the school timezone and can be stopped", async () => {
     const tasks = [...startDailyJobs(), startReminders(), startMorningList()];
-    expect(tasks).toHaveLength(4);
+    expect(tasks).toHaveLength(5);
     for (const task of tasks) await task.stop();
   });
 });
