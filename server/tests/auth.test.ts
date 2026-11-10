@@ -47,3 +47,19 @@ describe("access PIN", () => {
     expect((await request(app).get("/")).status).toBe(200);
   });
 });
+
+describe("protection against other web pages on her computer", () => {
+  it("without a PIN, refuses requests for a different host name (DNS rebinding)", async () => {
+    const app = createApp();
+    expect((await request(app).get("/api/tasks").set("Host", "evil.example:4000")).status).toBe(403);
+    expect((await request(app).get("/api/tasks").set("Host", "localhost:4000")).status).toBe(200);
+  });
+
+  it("refuses changes sent from another site's page, with or without a PIN", async () => {
+    const app = createApp();
+    const res = await request(app).post("/api/morning-list/confirm").set("Origin", "http://localhost:5173");
+    expect(res.status).toBe(403);
+    const same = await request(app).post("/api/morning-list/confirm").set("Host", "localhost:4000").set("Origin", "http://localhost:4000");
+    expect(same.status).toBe(200);
+  });
+});

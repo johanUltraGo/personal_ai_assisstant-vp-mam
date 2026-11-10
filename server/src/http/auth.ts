@@ -56,7 +56,39 @@ function isLocalDirect(req: Request): boolean {
   return address === "127.0.0.1" || address === "::1" || address === "::ffff:127.0.0.1";
 }
 
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+function hostName(hostHeader: string | undefined): string {
+  return (hostHeader ?? "").trim().toLowerCase().replace(/:\d+$/, "");
+}
+
+/**
+ * Changes must come from this app's own page: a browser sends Origin on POST,
+ * and another site's page (or another app on localhost) has a different one.
+ * Requests without Origin (curl, the phone's service worker GETs) pass.
+ */
+function sameOrigin(req: Request): boolean {
+  if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return true;
+  const origin = req.headers.origin;
+  if (!origin) return true;
+  try {
+    const originHost = new URL(origin).host.toLowerCase();
+    const allowed = [req.headers.host, req.headers["x-forwarded-host"], process.env.PUBLIC_ORIGIN && new URL(process.env.PUBLIC_ORIGIN).host]
+      .filter(Boolean)
+      .map((h) => String(h).split(",")[0].trim().toLowerCase());
+    return allowed.includes(originHost);
+  } catch {
+    return false;
+  }
+}
+
 export function requireAccess(req: Request, res: Response, next: NextFunction) {
+  if (!sameOrigin(req)) return res.status(403).json({ error: "Requests from other web pages are not allowed." });
+  // Without a PIN only this computer may use the API — and only under a local
+  // host name, so a web page re-pointed at 127.0.0.1 (DNS rebinding) is refused.
+  if (!configuredPin() && !LOCAL_HOSTS.has(hostName(req.headers.host))) {
+    return res.status(403).json({ error: "Set APP_ACCESS_PIN to use this server from another address." });
+  }
   if (configuredPin() ? isSignedIn(req) : isLocalDirect(req)) return next();
   res.status(401).json({
     error: configuredPin()
@@ -80,6 +112,7 @@ authRouter.get("/status", (req, res) => {
 });
 
 authRouter.post("/login", (req, res) => {
+  if (!sameOrigin(req)) return res.status(403).json({ error: "Requests from other web pages are not allowed." });
   const pin = configuredPin();
   if (!pin) return res.status(400).json({ error: "No access PIN is configured on this server." });
   const ip = req.socket.remoteAddress ?? "unknown";
