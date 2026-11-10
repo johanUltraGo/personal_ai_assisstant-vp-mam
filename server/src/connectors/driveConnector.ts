@@ -1,84 +1,114 @@
 import { Connector, ConnectorHealth, ConnectorNotConfiguredError } from "./connector";
+import { BadRequestError } from "../http/errors";
 
+/**
+ * A Drive file read in full (spec §5: "reads a whole Drive file first").
+ * Text-like files arrive as text; PDFs and images as base64 so Claude can
+ * read them directly.
+ */
 export interface DriveFile {
   name: string;
-  content: string;
+  mimeType: string;
+  kind: "text" | "pdf" | "image";
+  text?: string;
+  base64?: string;
 }
 
-/** Thin seam over the real Google Drive client, for the same reason as
- * EmailClient in gmailConnector.ts. */
+/** Thin seam over the Google Drive API so tests need no network. */
 export interface DriveClient {
   readFile(fileId: string): Promise<DriveFile>;
 }
 
-class GoogleDriveApiClient implements DriveClient {
-  constructor(private readonly accessToken: string) {}
+export const MAX_BINARY_BYTES = 10 * 1024 * 1024;
+export const MAX_TEXT_CHARS = 400_000;
+
+const GOOGLE_EXPORTS: Record<string, string> = {
+  "application/vnd.google-apps.document": "text/plain",
+  "application/vnd.google-apps.presentation": "text/plain",
+  "application/vnd.google-apps.spreadsheet": "text/csv",
+};
+const IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+
+function isTextType(mimeType: string) {
+  return mimeType.startsWith("text/") || ["application/json", "application/csv"].includes(mimeType) || mimeType.endsWith("+xml");
+}
+
+/** Accepts a Drive/Docs link or a bare file id. */
+export function driveFileIdFrom(urlOrId: string): string {
+  const value = urlOrId.trim();
+  const fromPath = value.match(/\/d\/([a-zA-Z0-9_-]{5,})/);
+  if (fromPath) return fromPath[1];
+  const fromQuery = value.match(/[?&]id=([a-zA-Z0-9_-]{5,})/);
+  if (fromQuery) return fromQuery[1];
+  if (/^[a-zA-Z0-9_-]{5,}$/.test(value)) return value;
+  throw new BadRequestError("That does not look like a Google Drive link or file id.");
+}
+
+export class GoogleDriveApiClient implements DriveClient {
+  constructor(private readonly accessToken: string | (() => Promise<string>)) {}
 
   async readFile(fileId: string): Promise<DriveFile> {
-    const headers = { Authorization: `Bearer ${this.accessToken}` };
-    const metadataResponse = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?fields=name,mimeType`,
-      { headers }
-    );
-    if (!metadataResponse.ok) throw new Error(`Drive could not read file details (${metadataResponse.status}): ${await metadataResponse.text()}`);
-    const metadata = (await metadataResponse.json()) as { name: string; mimeType: string };
-    const isGoogleDocument = metadata.mimeType.startsWith("application/vnd.google-apps.");
-    const contentUrl = isGoogleDocument
-      ? `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/export?mimeType=text/plain`
-      : `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media`;
-    const contentResponse = await fetch(contentUrl, { headers });
-    if (!contentResponse.ok) throw new Error(`Drive could not download the file (${contentResponse.status}): ${await contentResponse.text()}`);
-    return { name: metadata.name, content: await contentResponse.text() };
+    const token = typeof this.accessToken === "string" ? this.accessToken : await this.accessToken();
+    const headers = { Authorization: `Bearer ${token}` };
+    const base = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`;
+    const metadataResponse = await fetch(`${base}?fields=name,mimeType,size&supportsAllDrives=true`, { headers });
+    if (!metadataResponse.ok) throw new Error(`Drive could not find that file (${metadataResponse.status}).`);
+    const meta = (await metadataResponse.json()) as { name: string; mimeType: string; size?: string };
+
+    const exportType = GOOGLE_EXPORTS[meta.mimeType];
+    const kind: DriveFile["kind"] | undefined = exportType || isTextType(meta.mimeType)
+      ? "text"
+      : meta.mimeType === "application/pdf"
+        ? "pdf"
+        : IMAGE_TYPES.includes(meta.mimeType)
+          ? "image"
+          : undefined;
+    if (!kind) throw new BadRequestError(`I can't read "${meta.name}" (${meta.mimeType}) yet. Docs, Sheets, Slides, text, PDF and photos work.`);
+    if (kind !== "text" && Number(meta.size ?? 0) > MAX_BINARY_BYTES) {
+      throw new BadRequestError(`"${meta.name}" is too large to read whole (over 10 MB).`);
+    }
+
+    const url = exportType
+      ? `${base}/export?mimeType=${encodeURIComponent(exportType)}`
+      : `${base}?alt=media&supportsAllDrives=true`;
+    const response = await fetch(url, { headers });
+    if (!response.ok) throw new Error(`Drive could not download "${meta.name}" (${response.status}).`);
+
+    if (kind === "text") {
+      const text = await response.text();
+      if (text.length > MAX_TEXT_CHARS) throw new BadRequestError(`"${meta.name}" is too large to read whole.`);
+      return { name: meta.name, mimeType: exportType ?? meta.mimeType, kind, text };
+    }
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (bytes.length > MAX_BINARY_BYTES) throw new BadRequestError(`"${meta.name}" is too large to read whole (over 10 MB).`);
+    return { name: meta.name, mimeType: meta.mimeType, kind, base64: bytes.toString("base64") };
   }
 }
 
 /**
  * Google Drive connector (spec §7: "multiple accounts, full access,
- * including the school Drive"). Same blocker as Gmail: no OAuth client
- * credentials exist in this environment, so real reads are not
- * possible yet. The "read the whole file, then summarize it to her"
- * behaviour (spec §5) is implemented in readAndSummarize below and is
- * fully unit-testable against an injected DriveClient.
+ * including the school Drive"). Accounts are connected through Google sign-in
+ * (see src/google/accounts.ts and src/connectors/registry.ts).
  */
 export class DriveConnector implements Connector {
   readonly type = "drive";
 
-  constructor(private readonly accountLabel: string, private readonly client?: DriveClient) {}
+  constructor(readonly accountLabel: string, private readonly client?: DriveClient) {}
 
   health(): ConnectorHealth {
-    if (this.client) {
-      return { configured: true, detail: `Drive connector ready for account "${this.accountLabel}"` };
-    }
-    return {
-      configured: false,
-      detail: `Drive account "${this.accountLabel}" has no OAuth client configured (GOOGLE_OAUTH_CLIENT_ID/SECRET + per-account consent required, and separately, school Drive permission must be granted — planning.md §7).`,
-    };
+    if (this.client) return { configured: true, detail: `Drive files are read from ${this.accountLabel}.` };
+    return { configured: false, detail: "No Google account is connected for Drive." };
   }
 
   async readFile(fileId: string): Promise<DriveFile> {
     if (!this.client) {
-      throw new ConnectorNotConfiguredError(
-        `Cannot read: Drive account "${this.accountLabel}" is not connected. Complete Google OAuth setup first.`
-      );
+      throw new ConnectorNotConfiguredError("Drive is not connected yet. Connect a Google account on the Connections screen.");
     }
     return this.client.readFile(fileId);
   }
 }
 
-/**
- * Reads a whole Drive file and produces the text she should be told
- * before she dictates anything to send (spec §5: read-then-summarize,
- * strictly before any send). The actual summarization wording here is
- * a placeholder pass-through, not a Claude call, since this function's
- * job is the *ordering guarantee* (read fully, then and only then allow
- * a send) — wiring this summary through aiTaskParser's Claude client is
- * a natural follow-up once Drive access itself is unblocked.
- */
-export async function readAndSummarize(connector: DriveConnector, fileId: string): Promise<string> {
-  const file = await connector.readFile(fileId);
-  return `"${file.name}" contains: ${file.content}`;
-}
-
+/** Legacy single short-lived token from .env, used only when no account is connected. */
 export function driveFromEnvironment(accountLabel = process.env.DRIVE_ACCOUNT_LABEL || "default") {
   const accessToken = process.env.GOOGLE_ACCESS_TOKEN;
   return new DriveConnector(accountLabel, accessToken ? new GoogleDriveApiClient(accessToken) : undefined);

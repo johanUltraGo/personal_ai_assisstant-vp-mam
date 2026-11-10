@@ -1,18 +1,26 @@
 # Vice Principal AI — Planning Document
 
-**Status:** Draft for review — brainstorming and planning only, no implementation yet.
+**Status:** Planning document; implementation status is tracked in the section below.
 **Source material analysed:** `Vice Principal AI Assistant Spec (Principal Version).txt`, dated 30 October 2026. This is the only uploaded reference file in the project directory at the time of writing.
 **Note on prior work:** an earlier `planning.md` and a Phase 1 implementation plan existed in this repo (commit `2243b33`, 29 Oct 2026), based on an older, now-superseded spec file (`Vice Principal AI Assistant Specs.txt`, 23 Oct 2026, sourced from a "10 Layer Design Workbook"). That source file is no longer present in the project, and the new spec differs substantially — different reminder model, added voice/Tamil-English requirements, added messaging/connector scope, added power-button/platform constraints, and an explicit Claude-based reasoning requirement. This document replaces the old planning.md on the strength of the new spec; it does not assume anything from the old draft that isn't also stated or implied here.
 **Legend used throughout:** 🔵 = stated in the uploaded spec · 🟢 = proposed addition/analysis by this planning pass (not in the spec) · ❓ = unresolved — either carried from the spec's own open-questions list or newly identified during this analysis.
 
 ---
 
-## Implementation Status (updated 30 Oct 2026 — after building the Phase 1–4 foundation)
+## Implementation Status (updated 10 Nov 2026 — completion pass)
 
-Code now exists in `server/` (Node.js + TypeScript + Express + Prisma, SQLite for local dev). Full details, test results, and blockers are in the implementation final report delivered alongside this update; the summary below exists so this document stays the accurate source of truth for what's actually built versus still planned.
+Code is in `server/` (Node.js + TypeScript + Express 5 + Prisma, SQLite for local dev). The 10 Nov pass is described in `docs/superpowers/specs/2026-11-10-assistant-completion-design.md` (design and decisions) and `docs/superpowers/plans/2026-11-10-assistant-completion.md` (build plan); setup steps are in `server/README.md`. 107 automated tests pass.
 
-| Phase | Status | What's real and tested | What's blocked, and by what |
+| Phase | Status | Built and tested | Still needs outside action |
 |---|---|---|---|
+| 1 — Foundation | **Built** | Task states (+ CANCELLED, to confirm), history, manual entry, carry-over, 9:00 AM list, morning confirm ("Looks good") or one-reply change through the assistant. | Her testing. |
+| 2 — Reminders | **Built** | On-demand reminders, per-minute check, 3 retries then shown in "Needs your answer", sent/delivered log, snooze/delay/reschedule, repeats; **real phone notifications via Web Push** with delivery confirmed by the phone. | VAPID keys + https hosting; her phone subscribing. |
+| 3 — Voice, Tamil-English, messaging | **Built (browser voice)** | **One Claude assistant** (`claude-opus-5-5`) for everything by voice or typing, Tamil/English/mixed; **evening planning** that proposes time windows she edits and saves; "explain what you're doing" from a "How I work" prompt + activity log; send by name with disambiguation; **server-enforced single "Send?"**; Gmail from **multiple Google accounts** (encrypted refresh tokens); Drive files read whole (Docs, Sheets, PDF, photos) before she dictates; WhatsApp via Business API (individuals) or hand-off with the text typed (groups). | `ANTHROPIC_API_KEY`; Google Cloud OAuth client; better Tamil-English speech recognition depends on the on-device vs cloud decision (§11.1 #1). |
+| 4 — School integration & launch | **Partly built** | School calendar import (.ics/CSV/JSON/Google Sheet), daily Drive sync, two-days-before alerts 9 AM–6 PM with Yes → notice → "Send?"; leave letters for date ranges skipping weekends and calendar holidays; attachments (several photos at once, download, Drive links). | **Innovate School / Sola** (no known API — skipped); **power button / wake word** (needs a native Android app); Supabase hosting region. |
+
+Decisions taken in this pass that need her/Johan's confirmation are listed in the design doc §11 and marked "(call)" there.
+
+---|---|---|---|
 | 1 — Foundation | **Built & tested** | Task state machine, timestamped history, manual task entry, carry-forward of unfinished tasks, 9:00 AM morning list generation + on-demand fetch, minimal working web UI. | Native Android client not built (not needed until Phase 4's power-button goal). |
 | 2 — Reminders | **Built & tested** | On-demand reminders (incl. up to a week ahead), per-minute due-check, retry-up-to-3-then-surface-as-failed, sent/delivered logging, snooze/delay/reschedule, repeat (daily/weekly). | Real phone push (Firebase Cloud Messaging) not wired — reminders currently "deliver" via a console notifier standing in for it; no Firebase project/credentials exist yet. |
 | 3 — Voice/Tamil-English/messaging | **Partially built & tested** | Claude tool-calling task parser (code-complete, unit-tested with a mocked client); plug-in connector interface; Gmail/Drive connector logic and the read-then-summarize ordering (unit-tested against mocked clients); send-by-name contact resolution with disambiguation; the single "Send?" confirm-before-send flow with a permanent audit log. | **Live Claude calls** need `ANTHROPIC_API_KEY` (not set). **Live Gmail/Drive** need Google OAuth client credentials + per-account consent (not available). **Voice capture and Tamil-English STT** not attempted — no STT vendor evaluated yet (planning.md §11.2 #12). **WhatsApp** not implemented at all — no compliant sending path confirmed (§11.2 #14). |

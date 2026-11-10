@@ -46,7 +46,8 @@ model Attachment {
   id           String   @id @default(cuid())
   taskId       String?
   originalName String
-  storedName   String   @unique
+  storedName   String?  @unique // null for a Drive link
+  driveFileId  String?
   mimeType     String
   size         Int
   createdAt    DateTime @default(now())
@@ -78,6 +79,9 @@ model Reminder {
   status      String   @default("PENDING")
   retryCount  Int      @default(0)
   repeatRule  String?
+  // The time this occurrence was planned for; snooze/delay/retries move
+  // fireAt but never this, so repeats stay on her chosen time.
+  repeatAnchor DateTime?
   createdAt   DateTime @default(now())
 
   task Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)
@@ -105,6 +109,7 @@ model ReminderLog {
 
 model Contact {
   id        String   @id @default(cuid())
+  kind      String   @default("PERSON") // PERSON | GROUP (parents' group, teachers' group)
   displayName String
   email     String?
   whatsappNumber String?
@@ -117,9 +122,30 @@ model MessageSent {
   recipient   String
   subject     String?
   body        String
-  status      String // SENT | BLOCKED | FAILED
+  status      String // SENT | BLOCKED | FAILED | HANDED_OFF
   blockReason String?
   confirmedAt DateTime @default(now())
+  pendingMessageId String?
+  fromAccount String?
+  handoffUrl  String?
+}
+
+// A message exactly as it was shown to her with "Send?" (design §4). Only a
+// row here can be sent, only once, and only before it expires.
+model PendingMessage {
+  id               String    @id @default(cuid())
+  channel          String // EMAIL | WHATSAPP
+  contactId        String
+  recipientName    String
+  recipientKind    String
+  recipientAddress String?
+  subject          String?
+  body             String
+  calendarEventId  String?
+  createdAt        DateTime  @default(now())
+  expiresAt        DateTime
+  usedAt           DateTime?
+  cancelledAt      DateTime?
 }
 
 // Phase 4: school calendar awareness (spec §6). Rows here are produced
@@ -135,5 +161,84 @@ model CalendarEvent {
   type        String // HOLIDAY | EVENT
   promptedAt  DateTime?
   notifiedAt  DateTime?
+  decision    String? // APPROVED | DECLINED
+  decidedAt   DateTime?
   createdAt   DateTime  @default(now())
+}
+
+// What the assistant and its scheduled jobs did, in plain words, so she can
+// ask "what are you doing?" (spec §9). Append-only.
+model ActivityLog {
+  id      String   @id @default(cuid())
+  at      DateTime @default(now())
+  kind    String
+  summary String
+  refType String?
+  refId   String?
+
+  @@index([at])
+}
+
+// A connected Google account (Gmail send + Drive read). Only the encrypted
+// refresh token is stored (AES-256-GCM with TOKEN_ENCRYPTION_KEY).
+model GoogleAccount {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  label           String?
+  scopes          String
+  refreshTokenEnc String
+  isDefault       Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  lastUsedAt      DateTime?
+}
+
+// One conversation with the assistant (design §3). Messages are stored exactly
+// as sent/returned (all content blocks, JSON) and only ever appended.
+model Conversation {
+  id        String   @id @default(cuid())
+  kind      String // GENERAL | EVENING_PLAN | MORNING_REPLY
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  messages  ConversationMessage[]
+}
+
+model ConversationMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           String // user | assistant
+  contentJson    String
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+// She confirmed that day's morning list (spec §3: "confirms or changes it in one reply").
+model DayPlanConfirmation {
+  date        String   @id // YYYY-MM-DD in the school timezone
+  confirmedAt DateTime @default(now())
+  via         String // BUTTON | ASSISTANT
+}
+
+// A plan the assistant proposed in the evening talk (spec §3). She edits it on
+// screen and saves; saving creates the tasks. Older drafts are kept, discarded.
+model DayPlanProposal {
+  id             String    @id @default(cuid())
+  conversationId String?
+  planDate       String // YYYY-MM-DD
+  itemsJson      String
+  status         String    @default("DRAFT") // DRAFT | SAVED | DISCARDED
+  createdAt      DateTime  @default(now())
+  savedAt        DateTime?
+}
+
+// A phone/browser that agreed to receive notifications (Web Push, spec §10).
+model PushSubscription {
+  id            String    @id @default(cuid())
+  endpoint      String    @unique
+  p256dh        String
+  auth          String
+  createdAt     DateTime  @default(now())
+  lastSuccessAt DateTime?
 }

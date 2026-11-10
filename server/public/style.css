@@ -1,17 +1,37 @@
-body { font-family: system-ui, sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
+body { font-family: system-ui, "Noto Sans Tamil", sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; color: #1a1a1a; }
 header { margin-bottom: 1.5rem; }
+h3 { font-size: 1rem; margin: 1rem 0 0.4rem; }
 .subtitle { color: #666; font-size: 0.9rem; }
 section { margin-bottom: 2rem; padding: 1rem; border: 1px solid #ddd; border-radius: 8px; }
 form label { display: block; margin-bottom: 0.6rem; font-size: 0.9rem; }
-form input, form textarea, form select, #assistant-text { display: block; width: 100%; padding: 0.4rem; margin-top: 0.2rem; box-sizing: border-box; }
-button { padding: 0.4rem 0.9rem; cursor: pointer; }
+form input, form textarea, form select, #assistant-text { display: block; width: 100%; padding: 0.4rem; margin-top: 0.2rem; box-sizing: border-box; font: inherit; }
+button { padding: 0.4rem 0.9rem; cursor: pointer; margin: 0.15rem 0.15rem 0.15rem 0; }
+button.secondary { background: #f3f3f3; border: 1px solid #ccc; }
+button.primary { background: #2e7d32; color: #fff; border: 1px solid #1b5e20; font-weight: bold; }
 table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; }
-th, td { text-align: left; padding: 0.4rem; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+th, td { text-align: left; padding: 0.4rem; border-bottom: 1px solid #eee; font-size: 0.9rem; vertical-align: top; }
 .error { color: #b00020; }
 .status-COMPLETED { color: #2e7d32; font-weight: bold; }
-.status-OVERDUE { color: #c62828; font-weight: bold; }
+.status-OVERDUE, .status-FAILED { color: #c62828; font-weight: bold; }
+.status-CANCELLED { color: #777; text-decoration: line-through; }
 .hint { color: #555; font-size: 0.9rem; }
 .button-row { display: flex; gap: 0.5rem; margin-top: 0.6rem; flex-wrap: wrap; }
 .preview { white-space: pre-wrap; background: #f6f8fa; border-left: 3px solid #4b6cb7; padding: 0.8rem; margin-top: 0.8rem; }
+.card { border: 1px solid #c9d3ea; background: #f7f9fe; border-radius: 8px; padding: 0.8rem; margin-top: 0.8rem; }
+.card h4 { margin: 0 0 0.4rem; }
+.card .message-body { white-space: pre-wrap; background: #fff; border: 1px solid #e3e3e3; padding: 0.6rem; margin: 0.5rem 0; }
+.card.done { opacity: 0.75; }
+.conversation { max-height: 22rem; overflow-y: auto; margin-bottom: 0.6rem; }
+.bubble { padding: 0.5rem 0.7rem; border-radius: 10px; margin: 0.3rem 0; white-space: pre-wrap; max-width: 90%; }
+.bubble.user { background: #e8f0fe; margin-left: auto; }
+.bubble.assistant { background: #f1f1f1; }
+.badge { font-size: 0.75rem; background: #2e7d32; color: #fff; border-radius: 4px; padding: 0.1rem 0.4rem; vertical-align: middle; }
 .connection-ready { color: #176b3a; }
 .connection-not-ready { color: #8a4b00; }
+.inline-form { margin-top: 0.6rem; }
+.plan-table input { width: 100%; box-sizing: border-box; }
+#listen-button.listening { background: #c62828; color: #fff; animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(198, 40, 40, 0.5); } 50% { box-shadow: 0 0 0 10px rgba(198, 40, 40, 0); } }
+#login-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); display: flex; align-items: center; justify-content: center; z-index: 10; }
+#login-overlay[hidden] { display: none; }
+.login-box { background: #fff; padding: 1.5rem; border-radius: 10px; width: min(320px, 90vw); }

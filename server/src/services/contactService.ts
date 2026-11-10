@@ -1,6 +1,6 @@
 import { prisma } from "../db";
 
-export async function createContact(input: { displayName: string; email?: string; whatsappNumber?: string }) {
+export async function createContact(input: { displayName: string; kind?: "PERSON" | "GROUP"; email?: string; whatsappNumber?: string }) {
   return prisma.contact.create({ data: input });
 }
 
@@ -15,4 +15,8 @@ export async function findContactsByName(name: string) {
   const all = await prisma.contact.findMany();
   const needle = name.trim().toLowerCase();
   return all.filter((c) => c.displayName.toLowerCase().includes(needle));
+}
+
+export async function deleteContact(id: string) {
+  return prisma.contact.delete({ where: { id } });
 }

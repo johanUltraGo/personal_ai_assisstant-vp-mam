@@ -1,6 +1,7 @@
 import { prisma } from "../db";
 import { Notifier, ConsoleNotifier } from "../notifiers/notifier";
 import * as taskService from "./taskService";
+import { logActivity } from "./activityService";
 
 const MAX_RETRIES = 3;
 
@@ -22,6 +23,7 @@ export async function createReminder(input: CreateReminderInput) {
       fireAt: input.fireAt,
       taskId: input.taskId,
       repeatRule: input.repeatRule,
+      repeatAnchor: input.repeatRule ? input.fireAt : null,
       status: "PENDING",
     },
   });
@@ -44,6 +46,19 @@ function nextOccurrence(fireAt: Date, rule: "DAILY" | "WEEKLY"): Date {
 }
 
 /**
+ * Spec §10: repeats happen only if she set them. The next occurrence is
+ * planned from the original time (repeatAnchor), once this one is used up —
+ * delivered or finally failed — so snoozes and retries never shift it.
+ */
+async function scheduleNextOccurrence(reminder: { label: string; fireAt: Date; taskId: string | null; repeatRule: string | null; repeatAnchor: Date | null }) {
+  if (reminder.repeatRule !== "DAILY" && reminder.repeatRule !== "WEEKLY") return;
+  let next = nextOccurrence(reminder.repeatAnchor ?? reminder.fireAt, reminder.repeatRule);
+  // If the server was off for days, skip occurrences already in the past.
+  while (next.getTime() < Date.now() - 60_000) next = nextOccurrence(next, reminder.repeatRule);
+  await createReminder({ label: reminder.label, fireAt: next, taskId: reminder.taskId ?? undefined, repeatRule: reminder.repeatRule });
+}
+
+/**
  * Attempts delivery of one due reminder. Spec §10 rules encoded here:
  * - fires once; a repeat only happens if she set one, as a brand-new
  *   reminder for the next occurrence (this one still only "fires once").
@@ -57,7 +72,7 @@ export async function fireReminder(reminderId: string, notifier: Notifier = new 
 
   let delivered = false;
   try {
-    delivered = await notifier.send({ title: "Reminder", body: reminder.label });
+    delivered = await notifier.send({ title: "Reminder", body: reminder.label, data: { reminderId, url: "/#reminders-section" } });
   } catch {
     delivered = false;
   }
@@ -68,8 +83,14 @@ export async function fireReminder(reminderId: string, notifier: Notifier = new 
       data: { status: "SENT" },
     });
     await prisma.reminderLog.create({ data: { reminderId, eventType: "sent" } });
-    await prisma.reminderLog.create({ data: { reminderId, eventType: "delivered" } });
-    const updated = await prisma.reminder.update({ where: { id: reminderId }, data: { status: "DELIVERED" } });
+    // Web Push confirms delivery later from the phone (markDelivered); the
+    // console stand-in counts as delivered at once.
+    let updated = await prisma.reminder.findUniqueOrThrow({ where: { id: reminderId } });
+    if (notifier.confirmsDelivery !== false) {
+      await prisma.reminderLog.create({ data: { reminderId, eventType: "delivered" } });
+      updated = await prisma.reminder.update({ where: { id: reminderId }, data: { status: "DELIVERED" } });
+    }
+    await logActivity("reminder.sent", `Reminded you: "${reminder.label}"`, { type: "Reminder", id: reminderId });
 
     if (reminder.taskId) {
       await taskService.markReminderSent(reminder.taskId).catch(() => {
@@ -77,14 +98,7 @@ export async function fireReminder(reminderId: string, notifier: Notifier = new 
         // a reminder firing should never crash the pipeline over that.
       });
     }
-    if (reminder.repeatRule === "DAILY" || reminder.repeatRule === "WEEKLY") {
-      await createReminder({
-        label: reminder.label,
-        fireAt: nextOccurrence(reminder.fireAt, reminder.repeatRule),
-        taskId: reminder.taskId ?? undefined,
-        repeatRule: reminder.repeatRule,
-      });
-    }
+    await scheduleNextOccurrence(reminder);
     return updated;
   }
 
@@ -97,7 +111,23 @@ export async function fireReminder(reminderId: string, notifier: Notifier = new 
   await prisma.reminderLog.create({
     data: { reminderId, eventType: "failed", details: `retry ${retryCount}/${MAX_RETRIES}` },
   });
+  if (exhausted) {
+    // A failed day must not end a repeating reminder.
+    await scheduleNextOccurrence(reminder);
+    await logActivity(
+      "reminder.failed",
+      `Could not deliver the reminder "${reminder.label}" after ${MAX_RETRIES} tries — it is shown in the app.`,
+      { type: "Reminder", id: reminderId }
+    );
+  }
   return updated;
+}
+
+/** Called by her phone when it has shown the reminder (spec §10: "logs sent and delivered status"). */
+export async function markDelivered(reminderId: string) {
+  const claim = await prisma.reminder.updateMany({ where: { id: reminderId, status: "SENT" }, data: { status: "DELIVERED" } });
+  if (claim.count > 0) await prisma.reminderLog.create({ data: { reminderId, eventType: "delivered" } });
+  return prisma.reminder.findUniqueOrThrow({ where: { id: reminderId } });
 }
 
 export async function runDueReminders(reference: Date = new Date(), notifier: Notifier = new ConsoleNotifier()) {

@@ -1,6 +1,7 @@
 import { DateTime } from "luxon";
 import { prisma } from "../db";
 import * as taskService from "./taskService";
+import { logActivity } from "./activityService";
 
 const DEFAULT_TIMEZONE = "Asia/Kolkata";
 
@@ -28,7 +29,7 @@ export async function carryForwardUnfinishedTasks(reference: Date = new Date()) 
   const today = startOfDay(reference);
   const stale = await prisma.task.findMany({
     where: {
-      status: { not: "COMPLETED" },
+      status: { notIn: ["COMPLETED", "CANCELLED"] },
       timeWindowEnd: { lt: today.toJSDate() },
     },
   });
@@ -60,19 +61,46 @@ export async function carryForwardUnfinishedTasks(reference: Date = new Date()) 
  * compiles the list — delivery (push notification) is Phase 2's concern.
  */
 export async function buildMorningList(reference: Date = new Date()) {
-  await carryForwardUnfinishedTasks(reference);
+  const carried = await carryForwardUnfinishedTasks(reference);
   const today = startOfDay(reference);
   const tomorrow = today.plus({ days: 1 });
   const tasks = await prisma.task.findMany({
     where: {
       timeWindowStart: { gte: today.toJSDate(), lt: tomorrow.toJSDate() },
-      status: { not: "COMPLETED" },
+      status: { notIn: ["COMPLETED", "CANCELLED"] },
     },
     orderBy: { timeWindowStart: "asc" },
   });
+  await logActivity(
+    "morning_list.built",
+    `Prepared the work list for ${today.toISODate()}: ${tasks.length} task(s)` +
+      (carried.length ? `, ${carried.length} carried over from earlier days.` : ".")
+  );
+  const confirmation = await prisma.dayPlanConfirmation.findUnique({ where: { date: today.toISODate()! } });
   return {
     date: today.toISODate(),
     generatedAt: new Date().toISOString(),
+    confirmedAt: confirmation?.confirmedAt ?? null,
     tasks,
   };
+}
+
+/** Her "looks good" for a day's list (spec §3), by button or by telling the assistant. */
+export async function confirmDay(date: string, via: "BUTTON" | "ASSISTANT") {
+  const confirmation = await prisma.dayPlanConfirmation.upsert({
+    where: { date },
+    create: { date, via },
+    update: { confirmedAt: new Date(), via },
+  });
+  await logActivity("morning_list.confirmed", `You confirmed the work list for ${date}.`);
+  return confirmation;
+}
+
+/** Tasks scheduled on a given school day (not cancelled), for the assistant and the screen. */
+export async function tasksForDay(date: string) {
+  const day = DateTime.fromISO(date, { zone: schoolTimezone() }).startOf("day");
+  return prisma.task.findMany({
+    where: { timeWindowStart: { gte: day.toJSDate(), lt: day.plus({ days: 1 }).toJSDate() }, status: { not: "CANCELLED" } },
+    orderBy: { timeWindowStart: "asc" },
+  });
 }

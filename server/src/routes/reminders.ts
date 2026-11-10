@@ -40,6 +40,11 @@ remindersRouter.get("/:id", async (req, res) => {
   }
 });
 
+/** Her phone confirms it showed the reminder. */
+remindersRouter.post("/:id/delivered", async (req, res) => {
+  res.json(await reminderService.markDelivered(req.params.id));
+});
+
 const minutesSchema = z.object({ minutes: z.number().int().positive() });
 
 remindersRouter.post("/:id/snooze", async (req, res) => {

@@ -12,22 +12,38 @@ export interface EmailClient {
   send(email: OutboundEmail): Promise<{ id: string }>;
 }
 
-class GmailApiClient implements EmailClient {
-  constructor(private readonly accessToken: string) {}
+/**
+ * Builds the RFC 2822 message Gmail expects. Subjects are RFC 2047 encoded so
+ * Tamil text survives, and line breaks in headers are refused (they would let
+ * a crafted address add extra recipients).
+ */
+export function buildRawEmail(email: OutboundEmail): string {
+  if (/[\r\n]/.test(email.to) || /[\r\n]/.test(email.subject)) {
+    throw new Error("Email address and subject must be a single line.");
+  }
+  const subject = /^[\x20-\x7e]*$/.test(email.subject)
+    ? email.subject
+    : `=?UTF-8?B?${Buffer.from(email.subject, "utf8").toString("base64")}?=`;
+  return [
+    `To: ${email.to}`,
+    `Subject: ${subject}`,
+    "MIME-Version: 1.0",
+    "Content-Type: text/plain; charset=UTF-8",
+    "Content-Transfer-Encoding: base64",
+    "",
+    Buffer.from(email.body, "utf8").toString("base64"),
+  ].join("\r\n");
+}
+
+export class GmailApiClient implements EmailClient {
+  constructor(private readonly accessToken: string | (() => Promise<string>)) {}
 
   async send(email: OutboundEmail): Promise<{ id: string }> {
-    const message = [
-      `To: ${email.to}`,
-      `Subject: ${email.subject}`,
-      "MIME-Version: 1.0",
-      "Content-Type: text/plain; charset=UTF-8",
-      "",
-      email.body,
-    ].join("\r\n");
-    const raw = Buffer.from(message, "utf8").toString("base64url");
+    const raw = Buffer.from(buildRawEmail(email), "utf8").toString("base64url");
+    const token = typeof this.accessToken === "string" ? this.accessToken : await this.accessToken();
     const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
       method: "POST",
-      headers: { Authorization: `Bearer ${this.accessToken}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ raw }),
     });
     if (!response.ok) throw new Error(`Gmail rejected the message (${response.status}): ${await response.text()}`);
@@ -48,7 +64,7 @@ class GmailApiClient implements EmailClient {
 export class GmailConnector implements Connector {
   readonly type = "gmail";
 
-  constructor(private readonly accountLabel: string, private readonly client?: EmailClient) {}
+  constructor(readonly accountLabel: string, private readonly client?: EmailClient) {}
 
   health(): ConnectorHealth {
     if (this.client) {

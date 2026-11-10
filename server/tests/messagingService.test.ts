@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as contactService from "../src/services/contactService";
 import * as messagingService from "../src/services/messagingService";
-import { GmailConnector, EmailClient } from "../src/connectors/gmailConnector";
+import { GmailConnector, EmailClient, buildRawEmail } from "../src/connectors/gmailConnector";
 import { WhatsAppConnector } from "../src/connectors/whatsappConnector";
 import { prisma } from "../src/db";
 
@@ -27,63 +27,97 @@ describe("resolveRecipient", () => {
   });
 });
 
-describe("prepareMessage / confirmSend — single 'Send?' confirmation", () => {
-  it("prepares a message preview without sending anything", async () => {
+function fakeGmail(sent: any[]) {
+  const client: EmailClient = { send: async (email) => { sent.push(email); return { id: "msg_1" }; } };
+  return new GmailConnector("principal@school.edu", client);
+}
+
+describe("prepare + sendPending — the server-enforced 'Send?'", () => {
+  it("prepares a stored preview without sending anything", async () => {
     const contact = await contactService.createContact({ displayName: "Mr. Raman", email: "raman@example.com" });
-    const prepared = await messagingService.prepareMessage({
-      contactId: contact.id,
-      channel: "EMAIL",
-      subject: "Leave letter",
-      body: "Requesting leave for 2 Nov.",
-    });
-    expect(prepared.recipientAddress).toBe("raman@example.com");
+    const pending = await messagingService.prepareMessage({ contactId: contact.id, channel: "EMAIL", subject: "Leave letter", body: "Requesting leave for 2 Nov." });
+    expect(pending.recipientAddress).toBe("raman@example.com");
+    expect(pending.usedAt).toBeNull();
     expect(await prisma.messageSent.count()).toBe(0);
   });
 
-  it("refuses to prepare a WhatsApp message for a contact with no WhatsApp number", async () => {
-    const contact = await contactService.createContact({ displayName: "Mr. No WhatsApp", email: "x@example.com" });
-    await expect(
-      messagingService.prepareMessage({ contactId: contact.id, channel: "WHATSAPP", body: "Hi" })
-    ).rejects.toThrow(/no WhatsApp number/);
+  it("refuses an email to a contact with no email address", async () => {
+    const contact = await contactService.createContact({ displayName: "No Email", whatsappNumber: "+919876543210" });
+    await expect(messagingService.prepareMessage({ contactId: contact.id, channel: "EMAIL", body: "Hi" })).rejects.toThrow(/no email/);
   });
 
-  it("sends via Gmail only after confirmSend is called, using the connector it's given", async () => {
+  it("sends exactly the stored message once; a second Send is refused", async () => {
     const sent: any[] = [];
-    const fakeEmailClient: EmailClient = { send: async (email) => { sent.push(email); return { id: "msg_1" }; } };
     const contact = await contactService.createContact({ displayName: "Mrs. Devi", email: "devi@example.com" });
-    const prepared = await messagingService.prepareMessage({ contactId: contact.id, channel: "EMAIL", subject: "Fee reminder", body: "Please submit the fee by Friday." });
+    const pending = await messagingService.prepareMessage({ contactId: contact.id, channel: "EMAIL", subject: "Fee reminder", body: "Please submit the fee by Friday." });
+    const connectors = { gmail: fakeGmail(sent), whatsapp: new WhatsAppConnector() };
 
-    const result = await messagingService.confirmSend(prepared, {
-      gmail: new GmailConnector("principal@school.edu", fakeEmailClient),
-      whatsapp: new WhatsAppConnector(),
-    });
-
+    const result = await messagingService.sendPending(pending.id, connectors);
+    expect(result.status).toBe("SENT");
+    await expect(messagingService.sendPending(pending.id, connectors)).rejects.toThrow(/already sent or expired/);
     expect(sent).toHaveLength(1);
     expect(sent[0].to).toBe("devi@example.com");
-    expect((result as any).status).toBe("SENT");
+    expect(await prisma.messageSent.count()).toBe(1);
   });
 
-  it("logs a BLOCKED audit row instead of sending when Gmail has no OAuth client configured", async () => {
+  it("refuses an expired pending message", async () => {
+    const sent: any[] = [];
+    const contact = await contactService.createContact({ displayName: "Late", email: "late@example.com" });
+    const pending = await messagingService.prepareMessage({ contactId: contact.id, channel: "EMAIL", body: "x" });
+    await prisma.pendingMessage.update({ where: { id: pending.id }, data: { expiresAt: new Date(Date.now() - 1000) } });
+    await expect(messagingService.sendPending(pending.id, { gmail: fakeGmail(sent), whatsapp: new WhatsAppConnector() })).rejects.toThrow(/already sent or expired/);
+    expect(sent).toHaveLength(0);
+  });
+
+  it("records BLOCKED when Gmail is not connected", async () => {
     const contact = await contactService.createContact({ displayName: "Mr. Blocked", email: "blocked@example.com" });
-    const prepared = await messagingService.prepareMessage({ contactId: contact.id, channel: "EMAIL", body: "Test" });
-
-    const result = await messagingService.confirmSend(prepared, {
-      gmail: new GmailConnector("principal@school.edu"), // no client injected = not configured
-      whatsapp: new WhatsAppConnector(),
-    });
-
-    expect((result as any).status).toBe("BLOCKED");
-    expect((result as any).blockReason).toMatch(/not connected/);
+    const pending = await messagingService.prepareMessage({ contactId: contact.id, channel: "EMAIL", body: "Test" });
+    const result = await messagingService.sendPending(pending.id, { gmail: new GmailConnector("x"), whatsapp: new WhatsAppConnector() });
+    expect(result.status).toBe("BLOCKED");
+    expect(result.record.blockReason).toMatch(/not connected/);
   });
 
-  it("always blocks WhatsApp sends, per the unresolved feasibility question", async () => {
-    const contact = await contactService.createContact({ displayName: "Teachers Group Contact", whatsappNumber: "+911234567890" });
-    const prepared = await messagingService.prepareMessage({ contactId: contact.id, channel: "WHATSAPP", body: "Leave notice" });
+  it("hands a group WhatsApp message to WhatsApp with the text ready", async () => {
+    const group = await contactService.createContact({ displayName: "Teachers group", kind: "GROUP" });
+    const pending = await messagingService.prepareMessage({ contactId: group.id, channel: "WHATSAPP", body: "Leave notice" });
+    const result = await messagingService.sendPending(pending.id, { gmail: new GmailConnector("x"), whatsapp: new WhatsAppConnector() });
+    expect(result.status).toBe("HANDED_OFF");
+    expect(result.handoffUrl).toBe("https://wa.me/?text=Leave%20notice");
+  });
 
-    const result = await messagingService.confirmSend(prepared, {
-      gmail: new GmailConnector("principal@school.edu"),
-      whatsapp: new WhatsAppConnector(),
-    });
-    expect((result as any).status).toBe("BLOCKED");
+  it("hands a person's WhatsApp message off when the Business API is not set up", async () => {
+    const person = await contactService.createContact({ displayName: "Mr. Arun", whatsappNumber: "+91 98765 43210" });
+    const pending = await messagingService.prepareMessage({ contactId: person.id, channel: "WHATSAPP", body: "Hello" });
+    const result = await messagingService.sendPending(pending.id, { gmail: new GmailConnector("x"), whatsapp: new WhatsAppConnector() });
+    expect(result.handoffUrl).toBe("https://wa.me/919876543210?text=Hello");
+  });
+
+  it("uses the Business API for a person when it is configured", async () => {
+    const sent: any[] = [];
+    const person = await contactService.createContact({ displayName: "Mrs. Rani", whatsappNumber: "+919800000000" });
+    const pending = await messagingService.prepareMessage({ contactId: person.id, channel: "WHATSAPP", body: "Hi" });
+    const whatsapp = new WhatsAppConnector({ send: async (m) => { sent.push(m); return { id: "wamid" }; } });
+    const result = await messagingService.sendPending(pending.id, { gmail: new GmailConnector("x"), whatsapp });
+    expect(result.status).toBe("SENT");
+    expect(sent[0].to).toBe("+919800000000");
+  });
+
+  it("marks a calendar event notified when its notice is sent", async () => {
+    const sent: any[] = [];
+    const event = await prisma.calendarEvent.create({ data: { eventName: "Diwali", eventDate: new Date("2026-11-12"), type: "HOLIDAY" } });
+    const parents = await contactService.createContact({ displayName: "Parents group", kind: "GROUP", email: "parents@school.edu" });
+    const pending = await messagingService.prepareMessage({ contactId: parents.id, channel: "EMAIL", body: "Holiday", calendarEventId: event.id });
+    await messagingService.sendPending(pending.id, { gmail: fakeGmail(sent), whatsapp: new WhatsAppConnector() });
+    const updated = await prisma.calendarEvent.findUniqueOrThrow({ where: { id: event.id } });
+    expect(updated.notifiedAt).not.toBeNull();
+    expect(updated.decision).toBe("APPROVED");
+  });
+});
+
+describe("Gmail message encoding", () => {
+  it("encodes a Tamil subject and refuses header line breaks", () => {
+    const raw = buildRawEmail({ to: "a@b.com", subject: "விடுப்பு", body: "x" });
+    expect(raw).toContain("Subject: =?UTF-8?B?");
+    expect(() => buildRawEmail({ to: "a@b.com\r\nBcc: x@y.com", subject: "s", body: "x" })).toThrow();
   });
 });

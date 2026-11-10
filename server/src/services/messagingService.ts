@@ -1,17 +1,21 @@
+import { Contact, MessageSent, PendingMessage } from "@prisma/client";
 import { prisma } from "../db";
 import * as contactService from "./contactService";
-import { Contact } from "@prisma/client";
 import { GmailConnector } from "../connectors/gmailConnector";
-import { WhatsAppConnector } from "../connectors/whatsappConnector";
+import { WhatsAppConnector, WhatsAppWindowError, whatsappHandoffUrl } from "../connectors/whatsappConnector";
 import { ConnectorNotConfiguredError } from "../connectors/connector";
+import { BadRequestError, NotFoundError } from "../http/errors";
+import { logActivity } from "./activityService";
+
+/** How long a shown "Send?" preview stays sendable (design §4). */
+export const PENDING_TTL_MS = 30 * 60_000;
 
 export type RecipientResolution =
   | { status: "resolved"; contact: Contact }
   | { status: "ambiguous"; matches: Contact[] }
   | { status: "not_found" };
 
-/** Spec §5: "she says a contact's name ... if several contacts match,
- * it asks which one." */
+/** Spec §5: "she says a contact's name ... if several contacts match, it asks which one." */
 export async function resolveRecipient(name: string): Promise<RecipientResolution> {
   const matches = await contactService.findContactsByName(name);
   if (matches.length === 1) return { status: "resolved", contact: matches[0] };
@@ -21,44 +25,51 @@ export async function resolveRecipient(name: string): Promise<RecipientResolutio
 
 export type MessageChannel = "EMAIL" | "WHATSAPP";
 
-export interface PreparedMessage {
-  channel: MessageChannel;
-  recipientContactId: string;
-  recipientDisplayName: string;
-  recipientAddress: string;
-  subject?: string;
-  body: string;
-}
-
-export class RecipientAddressMissingError extends Error {}
-
-/**
- * Composes exactly what she will be shown before the single "Send?"
- * confirmation (spec §5: "before any message leaves, the assistant
- * shows it once and asks 'Send?'. No other confirmations are asked.").
- * This function only builds that preview — it never sends anything.
- */
-export async function prepareMessage(input: {
+export interface PrepareInput {
   contactId: string;
   channel: MessageChannel;
   subject?: string;
   body: string;
-}): Promise<PreparedMessage> {
-  const contact = await prisma.contact.findUniqueOrThrow({ where: { id: input.contactId } });
-  const address = input.channel === "EMAIL" ? contact.email : contact.whatsappNumber;
-  if (!address) {
-    throw new RecipientAddressMissingError(
-      `${contact.displayName} has no ${input.channel === "EMAIL" ? "email" : "WhatsApp number"} on file.`
-    );
+  calendarEventId?: string;
+}
+
+/**
+ * Stores exactly what she will be shown with the single "Send?" question
+ * (spec §5). Nothing is sent here; only sendPending can send, and only this
+ * stored row.
+ */
+export async function prepareMessage(input: PrepareInput): Promise<PendingMessage> {
+  const contact = await prisma.contact.findUnique({ where: { id: input.contactId } });
+  if (!contact) throw new NotFoundError("That contact no longer exists.");
+  if (!input.body.trim()) throw new BadRequestError("The message is empty.");
+
+  let address: string | null;
+  if (input.channel === "EMAIL") {
+    if (!contact.email) throw new BadRequestError(`${contact.displayName} has no email address on file.`);
+    address = contact.email;
+  } else {
+    // Groups have no number: WhatsApp opens its chat picker so she chooses the group.
+    address = contact.kind === "GROUP" ? null : contact.whatsappNumber;
   }
-  return {
-    channel: input.channel,
-    recipientContactId: contact.id,
-    recipientDisplayName: contact.displayName,
-    recipientAddress: address,
-    subject: input.subject,
-    body: input.body,
-  };
+
+  const pending = await prisma.pendingMessage.create({
+    data: {
+      channel: input.channel,
+      contactId: contact.id,
+      recipientName: contact.displayName,
+      recipientKind: contact.kind,
+      recipientAddress: address,
+      subject: input.subject?.trim() || null,
+      body: input.body,
+      calendarEventId: input.calendarEventId,
+      expiresAt: new Date(Date.now() + PENDING_TTL_MS),
+    },
+  });
+  await logActivity("message.prepared", `Prepared a ${channelName(input.channel)} to ${contact.displayName} for you to approve.`, {
+    type: "PendingMessage",
+    id: pending.id,
+  });
+  return pending;
 }
 
 export interface MessagingConnectors {
@@ -66,46 +77,104 @@ export interface MessagingConnectors {
   whatsapp: WhatsAppConnector;
 }
 
+export interface SendResult {
+  status: "SENT" | "FAILED" | "BLOCKED" | "HANDED_OFF";
+  handoffUrl?: string;
+  record: MessageSent;
+}
+
 /**
- * The ONLY function in this codebase that actually sends a message.
- * Called strictly after she has confirmed the exact PreparedMessage
- * from prepareMessage — nothing upstream of this ever sends on its
- * own. Every attempt (success or blocked) is written to MessageSent so
- * there is a permanent record of what went out, or why it didn't.
+ * The ONLY function that lets a message leave the system. It sends the stored
+ * preview she approved, claims it atomically so a double tap cannot send
+ * twice, and records every outcome permanently in MessageSent.
  */
-export async function confirmSend(message: PreparedMessage, connectors: MessagingConnectors) {
+export async function sendPending(id: string, connectors: MessagingConnectors): Promise<SendResult> {
+  const claim = await prisma.pendingMessage.updateMany({
+    where: { id, usedAt: null, cancelledAt: null, expiresAt: { gt: new Date() } },
+    data: { usedAt: new Date() },
+  });
+  if (claim.count === 0) {
+    const exists = await prisma.pendingMessage.findUnique({ where: { id } });
+    if (!exists) throw new NotFoundError("That message preview no longer exists.");
+    throw new BadRequestError("This message was already sent or expired. Please prepare it again.");
+  }
+  const message = await prisma.pendingMessage.findUniqueOrThrow({ where: { id } });
+
+  let status: SendResult["status"];
+  let handoffUrl: string | undefined;
+  let blockReason: string | undefined;
+  let fromAccount: string | undefined;
+
   try {
     if (message.channel === "EMAIL") {
-      await connectors.gmail.send({
-        to: message.recipientAddress,
-        subject: message.subject ?? "",
-        body: message.body,
-      });
-    } else {
+      await connectors.gmail.send({ to: message.recipientAddress!, subject: message.subject ?? "", body: message.body });
+      fromAccount = connectors.gmail.accountLabel;
+      status = "SENT";
+    } else if (message.recipientKind === "PERSON" && message.recipientAddress && connectors.whatsapp.apiConfigured) {
       await connectors.whatsapp.send({ to: message.recipientAddress, body: message.body });
+      status = "SENT";
+    } else {
+      handoffUrl = whatsappHandoffUrl(message.recipientAddress, message.body);
+      status = "HANDED_OFF";
     }
-    return prisma.messageSent.create({
-      data: {
-        channel: message.channel,
-        recipient: message.recipientAddress,
-        subject: message.subject,
-        body: message.body,
-        status: "SENT",
-      },
-    });
   } catch (err) {
-    const blocked = err instanceof ConnectorNotConfiguredError;
-    const saved = await prisma.messageSent.create({
-      data: {
-        channel: message.channel,
-        recipient: message.recipientAddress,
-        subject: message.subject,
-        body: message.body,
-        status: blocked ? "BLOCKED" : "FAILED",
-        blockReason: (err as Error).message,
-      },
-    });
-    if (blocked) return saved;
-    throw err;
+    blockReason = (err as Error).message;
+    if (err instanceof ConnectorNotConfiguredError) {
+      status = "BLOCKED";
+    } else {
+      status = "FAILED";
+      if (err instanceof WhatsAppWindowError) {
+        handoffUrl = whatsappHandoffUrl(message.recipientAddress, message.body);
+        blockReason += " You can send it yourself in WhatsApp instead.";
+      }
+    }
   }
+
+  const record = await prisma.messageSent.create({
+    data: {
+      channel: message.channel,
+      recipient: message.recipientAddress ?? message.recipientName,
+      subject: message.subject,
+      body: message.body,
+      status,
+      blockReason,
+      pendingMessageId: message.id,
+      fromAccount,
+      handoffUrl,
+    },
+  });
+
+  if ((status === "SENT" || status === "HANDED_OFF") && message.calendarEventId) {
+    await prisma.calendarEvent.updateMany({
+      where: { id: message.calendarEventId },
+      data: { notifiedAt: new Date(), decision: "APPROVED", decidedAt: new Date() },
+    });
+  }
+
+  const what = `${channelName(message.channel)} to ${message.recipientName}`;
+  const summary = {
+    SENT: `Sent the ${what} you approved.`,
+    HANDED_OFF: `Opened WhatsApp with the message to ${message.recipientName} ready for you to send.`,
+    BLOCKED: `Could not send the ${what}: ${blockReason}`,
+    FAILED: `Sending the ${what} failed: ${blockReason}`,
+  }[status];
+  await logActivity(`message.${status.toLowerCase()}`, summary, { type: "MessageSent", id: record.id });
+
+  return { status, handoffUrl, record };
+}
+
+export async function cancelPending(id: string) {
+  const claim = await prisma.pendingMessage.updateMany({ where: { id, usedAt: null, cancelledAt: null }, data: { cancelledAt: new Date() } });
+  if (claim.count === 0) {
+    if (!(await prisma.pendingMessage.findUnique({ where: { id } }))) throw new NotFoundError("That message preview no longer exists.");
+  }
+  return prisma.pendingMessage.findUniqueOrThrow({ where: { id } });
+}
+
+export function listSent(limit = 50) {
+  return prisma.messageSent.findMany({ orderBy: { confirmedAt: "desc" }, take: limit });
+}
+
+function channelName(channel: string) {
+  return channel === "EMAIL" ? "email" : "WhatsApp message";
 }
