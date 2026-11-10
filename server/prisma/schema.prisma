@@ -46,7 +46,8 @@ model Attachment {
   id           String   @id @default(cuid())
   taskId       String?
   originalName String
-  storedName   String   @unique
+  storedName   String?  @unique // null for a Drive link
+  driveFileId  String?
   mimeType     String
   size         Int
   createdAt    DateTime @default(now())

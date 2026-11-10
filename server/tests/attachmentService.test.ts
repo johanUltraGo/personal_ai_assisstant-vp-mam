@@ -14,3 +14,33 @@ describe("task attachments", () => {
     expect((await attachmentService.listTaskAttachments(task.id)).map((file) => file.id)).toEqual([saved.id]);
   });
 });
+
+describe("attachment download and Drive links", () => {
+  it("serves an attached file back with its type, and Drive links without a file", async () => {
+    const request = (await import("supertest")).default;
+    const { createApp } = await import("../src/app");
+    const { prisma } = await import("../src/db");
+    const app = createApp();
+    const task = await prisma.task.create({
+      data: { title: "Circular", timeWindowStart: new Date(), timeWindowEnd: new Date(Date.now() + 3600_000), status: "SCHEDULED" },
+    });
+    const upload = await request(app)
+      .post(`/api/attachments?taskId=${task.id}`)
+      .set("Content-Type", "image/png")
+      .set("X-File-Name", "photo 1.png")
+      .send(Buffer.from("png-bytes"));
+    expect(upload.status).toBe(201);
+    const file = await request(app).get(`/api/attachments/${upload.body.id}/file`).buffer(true);
+    expect(file.status).toBe(200);
+    expect(file.headers["content-type"]).toContain("image/png");
+    expect(Buffer.from(file.body).toString()).toBe("png-bytes");
+
+    const link = await request(app).post("/api/attachments/drive-link").send({ taskId: task.id, url: "https://drive.google.com/file/d/1AbCdEfGhIjK/view" });
+    expect(link.status).toBe(201);
+    expect(link.body.driveFileId).toBe("1AbCdEfGhIjK");
+    expect(link.body.storedName).toBeNull();
+    const list = await request(app).get(`/api/attachments?taskId=${task.id}`);
+    expect(list.body).toHaveLength(2);
+    expect((await request(app).get("/api/attachments/nope/file")).status).toBe(404);
+  });
+});
