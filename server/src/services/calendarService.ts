@@ -111,7 +111,8 @@ function normaliseEvent(input: { eventName: string; eventDate: string; type?: st
 
 export async function syncCalendarFromDrive(connector: DriveConnector, fileId: string) {
   const file = await connector.readFile(fileId);
-  const events = parseCalendarFile(file.content);
+  if (file.kind !== "text" || !file.text) throw new Error(`"${file.name}" is not a calendar file I can read (.ics, JSON, CSV or Google Sheet).`);
+  const events = parseCalendarFile(file.text);
   let created = 0;
   for (const event of events) {
     const start = DateTime.fromJSDate(event.eventDate, { zone: schoolTimezone() }).startOf("day");
