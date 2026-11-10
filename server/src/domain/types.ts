@@ -9,6 +9,7 @@ export const TASK_STATUSES = [
   "IN_PROGRESS",
   "COMPLETED",
   "OVERDUE",
+  "CANCELLED",
 ] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 
@@ -28,9 +29,12 @@ export type ReminderStatus = (typeof REMINDER_STATUSES)[number];
  */
 export const ALLOWED_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
   DRAFTED: ["SCHEDULED"],
-  SCHEDULED: ["REMINDER_SENT", "IN_PROGRESS", "COMPLETED", "OVERDUE"],
-  REMINDER_SENT: ["IN_PROGRESS", "COMPLETED", "OVERDUE"],
-  IN_PROGRESS: ["COMPLETED", "OVERDUE"],
-  OVERDUE: ["IN_PROGRESS", "COMPLETED", "SCHEDULED"], // SCHEDULED = carried over to a new day
+  SCHEDULED: ["REMINDER_SENT", "IN_PROGRESS", "COMPLETED", "OVERDUE", "CANCELLED"],
+  REMINDER_SENT: ["IN_PROGRESS", "COMPLETED", "OVERDUE", "CANCELLED"],
+  IN_PROGRESS: ["COMPLETED", "OVERDUE", "CANCELLED"],
+  OVERDUE: ["IN_PROGRESS", "COMPLETED", "SCHEDULED", "CANCELLED"], // SCHEDULED = carried over to a new day
   COMPLETED: [],
+  // Design §3.3 (Johan/Uma to confirm): she can drop a task without deleting
+  // its history. Only her instruction cancels; it never carries over.
+  CANCELLED: [],
 };

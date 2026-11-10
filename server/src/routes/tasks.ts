@@ -58,3 +58,18 @@ tasksRouter.post("/:id/start", async (req, res) => {
 tasksRouter.post("/:id/complete", async (req, res) => {
   res.json(await taskService.completeTask(req.params.id));
 });
+
+const updateTaskSchema = z.object({
+  title: z.string().min(1).optional(),
+  timeWindowStart: z.coerce.date().optional(),
+  timeWindowEnd: z.coerce.date().optional(),
+});
+
+tasksRouter.patch("/:id", async (req, res) => {
+  res.json(await taskService.updateTask(req.params.id, updateTaskSchema.parse(req.body)));
+});
+
+tasksRouter.post("/:id/cancel", async (req, res) => {
+  const reason = typeof req.body?.reason === "string" ? req.body.reason.slice(0, 200) : undefined;
+  res.json(await taskService.cancelTask(req.params.id, reason));
+});

@@ -1,5 +1,6 @@
 import { prisma } from "../db";
 import { ALLOWED_TRANSITIONS, TaskSource, TaskStatus } from "../domain/types";
+import { BadRequestError } from "../http/errors";
 
 export class InvalidTransitionError extends Error {
   constructor(from: TaskStatus, to: TaskStatus) {
@@ -49,7 +50,7 @@ async function applyTransition(
 
 export async function createTask(input: CreateTaskInput) {
   if (input.timeWindowEnd <= input.timeWindowStart) {
-    throw new Error("timeWindowEnd must be after timeWindowStart");
+    throw new BadRequestError("timeWindowEnd must be after timeWindowStart");
   }
   return prisma.$transaction(async (tx) => {
     const task = await tx.task.create({
@@ -109,8 +110,47 @@ export async function startTask(taskId: string) {
  * logs "principal" as the actor. There is no system/automated caller of
  * this function anywhere in the codebase.
  */
-export async function completeTask(taskId: string) {
-  return applyTransition(taskId, "COMPLETED", "principal");
+export async function completeTask(taskId: string, note?: string) {
+  return applyTransition(taskId, "COMPLETED", "principal", note);
+}
+
+/** Her decision to drop a task (design §3.3). History is kept; nothing is deleted. */
+export async function cancelTask(taskId: string, reason?: string) {
+  return applyTransition(taskId, "CANCELLED", "principal", reason ? `Cancelled: ${reason}` : "Cancelled");
+}
+
+/**
+ * Re-titles or re-times a task (e.g. her morning reply "move the staff
+ * meeting to 3"). Not a state change, so it is logged as a same-status
+ * history row with a note saying what moved.
+ */
+export async function updateTask(
+  taskId: string,
+  changes: { title?: string; timeWindowStart?: Date; timeWindowEnd?: Date },
+  changedBy = "principal"
+) {
+  return prisma.$transaction(async (tx) => {
+    const task = await tx.task.findUniqueOrThrow({ where: { id: taskId } });
+    if (task.status === "COMPLETED" || task.status === "CANCELLED") {
+      throw new InvalidTransitionError(task.status as TaskStatus, task.status as TaskStatus);
+    }
+    const start = changes.timeWindowStart ?? task.timeWindowStart;
+    const end = changes.timeWindowEnd ?? task.timeWindowEnd;
+    if (end <= start) throw new BadRequestError("timeWindowEnd must be after timeWindowStart");
+    const updated = await tx.task.update({
+      where: { id: taskId },
+      data: { title: changes.title?.trim() || task.title, timeWindowStart: start, timeWindowEnd: end },
+    });
+    const notes: string[] = [];
+    if (changes.title && changes.title.trim() !== task.title) notes.push(`renamed from "${task.title}"`);
+    if (start.getTime() !== task.timeWindowStart.getTime() || end.getTime() !== task.timeWindowEnd.getTime()) {
+      notes.push(`window ${task.timeWindowStart.toISOString()}–${task.timeWindowEnd.toISOString()} → ${start.toISOString()}–${end.toISOString()}`);
+    }
+    await tx.taskHistory.create({
+      data: { taskId, fromStatus: task.status, toStatus: task.status, changedBy, note: `Moved/edited: ${notes.join("; ") || "no change"}` },
+    });
+    return updated;
+  });
 }
 
 /** Called by the scheduler (system actor) when a reminder fires for a task. */

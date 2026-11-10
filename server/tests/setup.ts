@@ -6,6 +6,9 @@ beforeEach(async () => {
   // Tests run against the local dev SQLite file, reset between tests.
   // This is a throwaway dev database, not Supabase/production data.
   await prisma.activityLog.deleteMany();
+  await prisma.conversationMessage.deleteMany();
+  await prisma.conversation.deleteMany();
+  await prisma.dayPlanConfirmation.deleteMany();
   await prisma.googleAccount.deleteMany();
   await prisma.attachment.deleteMany();
   await prisma.reminderLog.deleteMany();

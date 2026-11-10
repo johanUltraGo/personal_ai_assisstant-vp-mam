@@ -1,7 +1,9 @@
 import { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import { Prisma } from "@prisma/client";
+import Anthropic from "@anthropic-ai/sdk";
 import { InvalidTransitionError } from "../services/taskService";
+import { MissingApiKeyError } from "../ai/claude";
 
 export class NotFoundError extends Error {}
 export class BadRequestError extends Error {}
@@ -19,6 +21,15 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
   if (err instanceof ZodError) return res.status(400).json({ error: err.flatten() });
   if (err instanceof BadRequestError || err instanceof InvalidTransitionError) {
     return res.status(400).json({ error: err.message });
+  }
+  if (err instanceof MissingApiKeyError) return res.status(503).json({ error: err.message, blocked: "ANTHROPIC_API_KEY" });
+  if (err instanceof Anthropic.RateLimitError) {
+    return res.status(503).json({ error: "The assistant is busy right now. Please try again in a minute." });
+  }
+  if (err instanceof Anthropic.APIError) {
+    // eslint-disable-next-line no-console
+    console.error("[claude] API error:", err.status, err.message);
+    return res.status(502).json({ error: "The assistant could not be reached. Please try again." });
   }
   const status = (err as { status?: number; type?: string }).status;
   if (status === 400 || status === 413 || (err as { type?: string }).type === "entity.parse.failed") {

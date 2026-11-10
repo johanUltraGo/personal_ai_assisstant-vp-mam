@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { buildMorningList } from "../services/morningListService";
+import { buildMorningList, confirmDay, startOfDay } from "../services/morningListService";
 
 export const morningListRouter = Router();
 
@@ -13,4 +13,9 @@ export const morningListRouter = Router();
 morningListRouter.get("/today", async (_req, res) => {
   const list = await buildMorningList();
   res.json(list);
+});
+
+/** "Looks good" — confirms today's list in one tap (spec §3). */
+morningListRouter.post("/confirm", async (_req, res) => {
+  res.json(await confirmDay(startOfDay().toISODate()!, "BUTTON"));
 });
