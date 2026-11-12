@@ -212,8 +212,11 @@ export async function raiseDuePrompts(now: Date = new Date(), notifier: Notifier
   const hour = DateTime.fromJSDate(now, { zone: schoolTimezone() }).hour;
   if (hour < 9 || hour >= 18) return [];
   const due = await findEventsNeedingPrompt(now);
+  const asked = [];
   for (const event of due) {
-    await markPrompted(event.id);
+    const claim = await prisma.calendarEvent.updateMany({ where: { id: event.id, promptedAt: null }, data: { promptedAt: new Date() } });
+    if (claim.count === 0) continue; // another run already asked
+    asked.push(event);
     await notifier.send({
       title: `${event.eventName} is coming up`,
       body: `${event.eventName} is on ${eventDay(event)}. Shall I send a notification to the parents' group?`,
@@ -224,7 +227,7 @@ export async function raiseDuePrompts(now: Date = new Date(), notifier: Notifier
       id: event.id,
     });
   }
-  return due;
+  return asked;
 }
 
 /** Events she was asked about and has not answered yet. */

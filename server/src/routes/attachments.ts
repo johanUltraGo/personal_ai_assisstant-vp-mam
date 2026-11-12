@@ -37,7 +37,11 @@ attachmentsRouter.get("/:id/file", async (req, res) => {
   // downloads, and nothing served here may run script on the app's origin.
   const inline = INLINE_TYPES.has(attachment.mimeType.toLowerCase());
   res.setHeader("Content-Type", inline ? attachment.mimeType : "application/octet-stream");
-  res.setHeader("Content-Disposition", `${inline ? "inline" : "attachment"}; filename="${attachment.originalName}"`);
+  const asciiName = attachment.originalName.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
+  res.setHeader(
+    "Content-Disposition",
+    `${inline ? "inline" : "attachment"}; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(attachment.originalName)}`
+  );
   res.setHeader("Content-Security-Policy", "sandbox; default-src 'none'; img-src 'self'; style-src 'unsafe-inline'");
   res.setHeader("X-Content-Type-Options", "nosniff");
   stream.pipe(res);

@@ -1,9 +1,11 @@
 import cron, { ScheduledTask } from "node-cron";
 import { buildMorningList, schoolTimezone } from "../services/morningListService";
 import { notifierFromEnvironment } from "../notifiers/notifier";
+import { logActivity } from "../services/activityService";
 
 export async function runMorningListJob() {
   const list = await buildMorningList();
+  await logActivity("morning_list.built", `Prepared and sent the work list for ${list.date}: ${list.tasks.length} task(s).`);
   const first = list.tasks.slice(0, 3).map((t) => t.title).join(", ");
   const notifier = await notifierFromEnvironment();
   await notifier.send({

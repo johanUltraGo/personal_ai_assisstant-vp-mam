@@ -5,7 +5,7 @@ import { createApp } from "../src/app";
 import { logActivity, recentActivity } from "../src/services/activityService";
 import * as reminderService from "../src/services/reminderService";
 import * as taskService from "../src/services/taskService";
-import { buildMorningList } from "../src/services/morningListService";
+import { runMorningListJob } from "../src/scheduler/morningListScheduler";
 
 const failing = { send: async () => false };
 
@@ -34,12 +34,12 @@ describe("activity log", () => {
     expect(failed).toHaveLength(1);
   });
 
-  it("logs the morning list with its task count", async () => {
+  it("logs the 9:00 work list with its task count", async () => {
     const now = new Date();
     await taskService.createTask({
       title: "Assembly", timeWindowStart: new Date(now.getTime() + 60_000), timeWindowEnd: new Date(now.getTime() + 120_000),
     });
-    await buildMorningList(now);
+    await runMorningListJob();
     const entry = await prisma.activityLog.findFirst({ where: { kind: "morning_list.built" } });
     expect(entry?.summary).toMatch(/\d+ task/);
   });

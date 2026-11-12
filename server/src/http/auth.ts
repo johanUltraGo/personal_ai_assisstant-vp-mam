@@ -1,15 +1,19 @@
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "crypto";
 import { NextFunction, Request, Response, Router } from "express";
 import { z } from "zod";
+import { prisma } from "../db";
 
 /**
  * Single-user access protection (design §5).
  * - APP_ACCESS_PIN set: every /api route except login/status needs the
- *   vp_session cookie issued by POST /api/auth/login.
- * - Not set: /api answers only requests made on this same computer that did
- *   not arrive through a proxy. Her phone therefore needs a PIN.
+ *   vp_session cookie issued by POST /api/auth/login. The cookie is a random
+ *   token stored (hashed) in the database: it expires, sign-out revokes it,
+ *   and changing the PIN signs every device out.
+ * - Not set: /api answers only requests made on this same computer, under a
+ *   local host name, that did not arrive through a proxy. Her phone needs a PIN.
  */
 const COOKIE = "vp_session";
+const SESSION_DAYS = 180;
 const MAX_FAILURES = 5;
 const WINDOW_MS = 15 * 60_000;
 const failures = new Map<string, number[]>();
@@ -23,8 +27,13 @@ function configuredPin(): string | undefined {
   return pin ? pin : undefined;
 }
 
-function sessionToken(pin: string): string {
-  return createHmac("sha256", pin).update("vp-session-v1").digest("base64url");
+/** Ties sessions to the current PIN without storing the PIN. */
+function pinFingerprint(pin: string): string {
+  return createHmac("sha256", pin).update("vp-pin-fingerprint-v1").digest("base64url");
+}
+
+function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("base64url");
 }
 
 function readCookie(req: Request, name: string): string | undefined {
@@ -43,17 +52,27 @@ function safeEqual(a: string, b: string): boolean {
   return left.length === right.length && timingSafeEqual(left, right);
 }
 
-function isSignedIn(req: Request): boolean {
+async function isSignedIn(req: Request): Promise<boolean> {
   const pin = configuredPin();
-  if (!pin) return false;
-  const cookie = readCookie(req, COOKIE);
-  return !!cookie && safeEqual(cookie, sessionToken(pin));
+  const token = readCookie(req, COOKIE);
+  if (!pin || !token) return false;
+  const session = await prisma.session.findUnique({ where: { tokenHash: hashToken(token) } });
+  return !!session && session.expiresAt > new Date() && safeEqual(session.pinFingerprint, pinFingerprint(pin));
 }
 
 function isLocalDirect(req: Request): boolean {
   if (req.headers["x-forwarded-for"] || req.headers["forwarded"]) return false;
   const address = req.socket.remoteAddress ?? "";
   return address === "127.0.0.1" || address === "::1" || address === "::ffff:127.0.0.1";
+}
+
+/** The device's address: the proxy's X-Forwarded-For when TRUST_PROXY=true, else the socket. */
+function clientAddress(req: Request): string {
+  if (process.env.TRUST_PROXY === "true") {
+    const forwarded = String(req.headers["x-forwarded-for"] ?? "").split(",")[0].trim();
+    if (forwarded) return forwarded;
+  }
+  return req.socket.remoteAddress ?? "unknown";
 }
 
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
@@ -65,7 +84,7 @@ function hostName(hostHeader: string | undefined): string {
 /**
  * Changes must come from this app's own page: a browser sends Origin on POST,
  * and another site's page (or another app on localhost) has a different one.
- * Requests without Origin (curl, the phone's service worker GETs) pass.
+ * Requests without Origin (curl, the phone's service worker) pass.
  */
 function sameOrigin(req: Request): boolean {
   if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return true;
@@ -82,14 +101,14 @@ function sameOrigin(req: Request): boolean {
   }
 }
 
-export function requireAccess(req: Request, res: Response, next: NextFunction) {
+export async function requireAccess(req: Request, res: Response, next: NextFunction) {
   if (!sameOrigin(req)) return res.status(403).json({ error: "Requests from other web pages are not allowed." });
   // Without a PIN only this computer may use the API — and only under a local
   // host name, so a web page re-pointed at 127.0.0.1 (DNS rebinding) is refused.
   if (!configuredPin() && !LOCAL_HOSTS.has(hostName(req.headers.host))) {
     return res.status(403).json({ error: "Set APP_ACCESS_PIN to use this server from another address." });
   }
-  if (configuredPin() ? isSignedIn(req) : isLocalDirect(req)) return next();
+  if (configuredPin() ? await isSignedIn(req) : isLocalDirect(req)) return next();
   res.status(401).json({
     error: configuredPin()
       ? "Please enter your access PIN."
@@ -98,43 +117,51 @@ export function requireAccess(req: Request, res: Response, next: NextFunction) {
   });
 }
 
-function recentFailures(ip: string): number[] {
+function recentFailures(address: string): number[] {
   const now = Date.now();
-  const list = (failures.get(ip) ?? []).filter((at) => now - at < WINDOW_MS);
-  failures.set(ip, list);
+  const list = (failures.get(address) ?? []).filter((at) => now - at < WINDOW_MS);
+  if (list.length) failures.set(address, list);
+  else failures.delete(address);
   return list;
 }
 
 export const authRouter = Router();
 
-authRouter.get("/status", (req, res) => {
-  res.json({ pinRequired: !!configuredPin(), signedIn: configuredPin() ? isSignedIn(req) : isLocalDirect(req) });
+authRouter.get("/status", async (req, res) => {
+  res.json({ pinRequired: !!configuredPin(), signedIn: configuredPin() ? await isSignedIn(req) : isLocalDirect(req) });
 });
 
-authRouter.post("/login", (req, res) => {
+authRouter.post("/login", async (req, res) => {
   if (!sameOrigin(req)) return res.status(403).json({ error: "Requests from other web pages are not allowed." });
   const pin = configuredPin();
   if (!pin) return res.status(400).json({ error: "No access PIN is configured on this server." });
-  const ip = req.socket.remoteAddress ?? "unknown";
-  if (recentFailures(ip).length >= MAX_FAILURES) {
+  const address = clientAddress(req);
+  if (recentFailures(address).length >= MAX_FAILURES) {
     return res.status(429).json({ error: "Too many wrong PINs. Try again in 15 minutes." });
   }
   const parsed = z.object({ pin: z.string() }).safeParse(req.body);
   if (!parsed.success || !safeEqual(parsed.data.pin, pin)) {
-    recentFailures(ip).push(Date.now());
+    failures.set(address, [...recentFailures(address), Date.now()]);
     return res.status(401).json({ error: "That PIN is not right." });
   }
-  res.cookie(COOKIE, sessionToken(pin), {
+  const token = randomBytes(32).toString("base64url");
+  await prisma.session.create({
+    data: { tokenHash: hashToken(token), pinFingerprint: pinFingerprint(pin), expiresAt: new Date(Date.now() + SESSION_DAYS * 864e5) },
+  });
+  await prisma.session.deleteMany({ where: { expiresAt: { lt: new Date() } } });
+  res.cookie(COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: req.secure || process.env.COOKIE_SECURE === "true",
-    maxAge: 180 * 24 * 3600_000,
+    maxAge: SESSION_DAYS * 864e5,
     path: "/",
   });
   res.json({ ok: true });
 });
 
-authRouter.post("/logout", (_req, res) => {
+authRouter.post("/logout", async (req, res) => {
+  const token = readCookie(req, COOKIE);
+  if (token) await prisma.session.deleteMany({ where: { tokenHash: hashToken(token) } });
   res.clearCookie(COOKIE, { path: "/" });
   res.json({ ok: true });
 });

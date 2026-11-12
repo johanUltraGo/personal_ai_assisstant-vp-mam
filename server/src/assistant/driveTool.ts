@@ -16,7 +16,8 @@ registerTool(
       properties: { file: { type: "string", description: "Drive link or file id" } },
     },
     schema: z.object({ file: z.string().trim().min(1) }),
-    async run({ file }) {
+    async run({ file }, ctx) {
+      ctx.flags?.add("external_content");
       const id = driveFileIdFrom(file);
       const drive = await registry.driveConnector();
       const doc = await drive.readFile(id);

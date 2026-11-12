@@ -130,7 +130,20 @@ export async function markDelivered(reminderId: string) {
   return prisma.reminder.findUniqueOrThrow({ where: { id: reminderId } });
 }
 
+let checkRunning = false;
+
+/** The every-minute check. A check still running when the next starts is not repeated, so nothing is sent twice. */
 export async function runDueReminders(reference: Date = new Date(), notifier: Notifier = new ConsoleNotifier()) {
+  if (checkRunning) return [];
+  checkRunning = true;
+  try {
+    return await fireDue(reference, notifier);
+  } finally {
+    checkRunning = false;
+  }
+}
+
+async function fireDue(reference: Date, notifier: Notifier) {
   const due = await dueReminders(reference);
   const results = [];
   for (const reminder of due) {

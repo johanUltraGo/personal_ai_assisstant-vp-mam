@@ -63,3 +63,45 @@ describe("protection against other web pages on her computer", () => {
     expect(same.status).toBe(200);
   });
 });
+
+describe("sessions and lockout (m2)", () => {
+  afterEach(() => {
+    delete process.env.APP_ACCESS_PIN;
+    delete process.env.TRUST_PROXY;
+  });
+
+  async function signIn(app: any) {
+    const ok = await request(app).post("/api/auth/login").send({ pin: "123456" });
+    return ok.headers["set-cookie"];
+  }
+
+  it("sign-out really ends the session, even if the old cookie is replayed", async () => {
+    process.env.APP_ACCESS_PIN = "123456";
+    const app = createApp();
+    const cookie = await signIn(app);
+    await request(app).post("/api/auth/logout").set("Cookie", cookie);
+    expect((await request(app).get("/api/tasks").set("Cookie", cookie)).status).toBe(401);
+  });
+
+  it("sessions expire and a PIN change signs everyone out", async () => {
+    process.env.APP_ACCESS_PIN = "123456";
+    const app = createApp();
+    const cookie = await signIn(app);
+    process.env.APP_ACCESS_PIN = "654321";
+    expect((await request(app).get("/api/tasks").set("Cookie", cookie)).status).toBe(401);
+    process.env.APP_ACCESS_PIN = "123456";
+    const fresh = await signIn(app);
+    const { prisma } = await import("../src/db");
+    await prisma.session.updateMany({ data: { expiresAt: new Date(Date.now() - 1000) } });
+    expect((await request(app).get("/api/tasks").set("Cookie", fresh)).status).toBe(401);
+  });
+
+  it("behind a proxy, one device's wrong PINs don't lock out another", async () => {
+    process.env.APP_ACCESS_PIN = "123456";
+    process.env.TRUST_PROXY = "true";
+    const app = createApp();
+    for (let i = 0; i < 5; i++) await request(app).post("/api/auth/login").set("X-Forwarded-For", "10.0.0.9").send({ pin: "1" });
+    expect((await request(app).post("/api/auth/login").set("X-Forwarded-For", "10.0.0.9").send({ pin: "123456" })).status).toBe(429);
+    expect((await request(app).post("/api/auth/login").set("X-Forwarded-For", "10.0.0.20").send({ pin: "123456" })).status).toBe(200);
+  });
+});

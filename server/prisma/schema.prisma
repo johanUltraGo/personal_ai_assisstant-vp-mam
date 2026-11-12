@@ -242,3 +242,13 @@ model PushSubscription {
   createdAt     DateTime  @default(now())
   lastSuccessAt DateTime?
 }
+
+// A signed-in browser (design §5). Only a hash of the random cookie token is
+// stored; sessions expire, sign-out deletes them, and a PIN change voids them.
+model Session {
+  id             String   @id @default(cuid())
+  tokenHash      String   @unique
+  pinFingerprint String
+  createdAt      DateTime @default(now())
+  expiresAt      DateTime
+}

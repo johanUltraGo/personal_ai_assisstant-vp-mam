@@ -139,6 +139,7 @@ async function runTurnLocked(
   await appendMessage(conversationId, "user", userMessage.content);
 
   const cards: Card[] = [];
+  const flags = new Set<string>();
   for (let call = 0; call < MAX_MODEL_CALLS; call++) {
     const response = await callClaude(client, { system: SYSTEM_PROMPT, tools: toolDefinitions(), messages, effort: EFFORT[kind] });
 
@@ -168,7 +169,7 @@ async function runTurnLocked(
 
     const results: Anthropic.Beta.Messages.BetaToolResultBlockParam[] = [];
     for (const use of toolUses) {
-      const outcome = await runTool(use.name, use.input, { conversationId, inputMode, cards });
+      const outcome = await runTool(use.name, use.input, { conversationId, inputMode, cards, flags });
       results.push({ type: "tool_result", tool_use_id: use.id, content: outcome.content, ...(outcome.isError ? { is_error: true } : {}) });
     }
     const toolMessage: MessageParam = { role: "user", content: results };

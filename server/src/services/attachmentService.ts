@@ -14,8 +14,9 @@ export async function saveTaskAttachment(input: { taskId: string; originalName: 
   if (input.content.length > maxUploadBytes) throw new BadRequestError("Attachments must be 10 MB or smaller.");
   await prisma.task.findUniqueOrThrow({ where: { id: input.taskId } });
 
-  const safeName = path.basename(input.originalName).replace(/[^a-zA-Z0-9._-]/g, "_") || "attachment";
-  const storedName = `${randomUUID()}-${safeName}`;
+  // Keep letters in any script (Tamil names stay readable); drop anything else.
+  const safeName = path.basename(input.originalName).replace(/[^\p{L}\p{M}\p{N}._-]/gu, "_") || "attachment";
+  const storedName = `${randomUUID()}-${safeName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
   await fs.mkdir(uploadRoot, { recursive: true });
   await fs.writeFile(path.join(uploadRoot, storedName), input.content, { flag: "wx" });
   try {

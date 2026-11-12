@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import * as taskService from "../services/taskService";
-import { TASK_SOURCES } from "../domain/types";
+import { TASK_SOURCES, TASK_STATUSES } from "../domain/types";
 
 export const tasksRouter = Router();
 
@@ -27,14 +27,14 @@ tasksRouter.post("/", async (req, res) => {
   }
 });
 
+const listQuery = z.object({
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+  status: z.enum(TASK_STATUSES).optional(),
+});
+
 tasksRouter.get("/", async (req, res) => {
-  const { from, to, status } = req.query;
-  const tasks = await taskService.listTasks({
-    from: from ? new Date(String(from)) : undefined,
-    to: to ? new Date(String(to)) : undefined,
-    status: status ? (String(status) as any) : undefined,
-  });
-  res.json(tasks);
+  res.json(await taskService.listTasks(listQuery.parse(req.query)));
 });
 
 tasksRouter.get("/:id", async (req, res) => {

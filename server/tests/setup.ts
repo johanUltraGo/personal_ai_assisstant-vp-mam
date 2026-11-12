@@ -10,6 +10,7 @@ if (!process.env.DATABASE_URL?.endsWith("test.db")) {
 beforeEach(async () => {
   // Tests run against prisma/test.db (see vitest.config.ts), reset between tests.
   await prisma.activityLog.deleteMany();
+  await prisma.session.deleteMany();
   await prisma.pushSubscription.deleteMany();
   await prisma.conversationMessage.deleteMany();
   await prisma.conversation.deleteMany();

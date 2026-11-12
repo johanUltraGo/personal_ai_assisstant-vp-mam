@@ -18,7 +18,15 @@ import { pushRouter } from "./routes/push";
 
 export function createApp() {
   const app = express();
-  app.use(express.json());
+  // JSON bodies everywhere except raw file uploads to /api/attachments, so a
+  // .json file can be attached like any other.
+  app.use(
+    express.json({
+      type: (req) =>
+        /json/i.test(String(req.headers["content-type"] ?? "")) &&
+        !(req.method === "POST" && (req.url ?? "").split("?")[0] === "/api/attachments"),
+    })
+  );
 
   app.get("/health", (_req, res) => res.json({ ok: true }));
 

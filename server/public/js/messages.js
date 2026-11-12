@@ -56,6 +56,7 @@ export async function loadSent() {
 }
 
 async function prepareFor(contactId, channel, subject, body, box) {
+  if (!contactId) throw new Error("Choose who to send it to.");
   const pending = await api("/api/messaging/prepare", { json: { contactId, channel, subject: subject || undefined, body } });
   box.replaceChildren(sendCard(pending));
 }

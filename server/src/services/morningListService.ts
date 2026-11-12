@@ -43,7 +43,8 @@ export async function carryForwardUnfinishedTasks(reference: Date = new Date()) 
     const originalStart = DateTime.fromJSDate(task.timeWindowStart, { zone: schoolTimezone() });
     const originalEnd = DateTime.fromJSDate(task.timeWindowEnd, { zone: schoolTimezone() });
     const newStart = today.set({ hour: originalStart.hour, minute: originalStart.minute });
-    const newEnd = today.set({ hour: originalEnd.hour, minute: originalEnd.minute });
+    // Keep the task's length so an overnight window (22:00–01:00) stays valid.
+    const newEnd = newStart.plus({ milliseconds: task.timeWindowEnd.getTime() - task.timeWindowStart.getTime() });
     const updated = await taskService.carryForward(
       task.id,
       newStart.toJSDate(),
@@ -71,16 +72,15 @@ export async function buildMorningList(reference: Date = new Date()) {
     },
     orderBy: { timeWindowStart: "asc" },
   });
-  await logActivity(
-    "morning_list.built",
-    `Prepared the work list for ${today.toISODate()}: ${tasks.length} task(s)` +
-      (carried.length ? `, ${carried.length} carried over from earlier days.` : ".")
-  );
+  if (carried.length) {
+    await logActivity("tasks.carried_over", `Moved ${carried.length} unfinished task(s) from earlier days to ${today.toISODate()}.`);
+  }
   const confirmation = await prisma.dayPlanConfirmation.findUnique({ where: { date: today.toISODate()! } });
   return {
     date: today.toISODate(),
     generatedAt: new Date().toISOString(),
     confirmedAt: confirmation?.confirmedAt ?? null,
+    carriedOver: carried.length,
     tasks,
   };
 }

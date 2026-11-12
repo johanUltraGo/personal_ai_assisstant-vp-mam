@@ -30,7 +30,9 @@ export async function backupDatabase(now: Date = new Date()) {
   const today = DateTime.fromJSDate(now, { zone: schoolTimezone() });
   const file = path.join(dir, `vp-${today.toISODate()}.db`);
   const temp = `${file}.tmp`;
-  await fs.rm(temp, { force: true });
+  for (const name of await fs.readdir(dir)) {
+    if (/^vp-.*\.db\.tmp$/.test(name)) await fs.rm(path.join(dir, name), { force: true });
+  }
   await prisma.$executeRawUnsafe(`VACUUM INTO '${temp.replace(/'/g, "''")}'`);
   await fs.rm(file, { force: true });
   await fs.rename(temp, file);
