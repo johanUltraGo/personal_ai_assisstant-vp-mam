@@ -4,6 +4,7 @@ import { prisma } from "../db";
 import { callClaude, ClaudeLike, Effort, getClaude } from "../ai/claude";
 import Anthropic2 from "@anthropic-ai/sdk";
 import { NotFoundError } from "../http/errors";
+import { ConversationBusyError, ConversationBrokenError } from "./errors";
 import { schoolTimezone, startOfDay, tasksForDay } from "../services/morningListService";
 import { SYSTEM_PROMPT } from "./prompt";
 import { Card, runTool, toolDefinitions } from "./tools";
@@ -17,19 +18,7 @@ export const CONVERSATION_KINDS: ConversationKind[] = ["GENERAL", "EVENING_PLAN"
 
 const MAX_MODEL_CALLS = 8;
 
-/** A second message arrived while the previous one is still being answered. */
-export class ConversationBusyError extends Error {
-  constructor() {
-    super("I'm still answering your last message. Please wait a moment.");
-  }
-}
-
-/** Claude rejected this conversation's stored history; it cannot continue. */
-export class ConversationBrokenError extends Error {
-  constructor() {
-    super("This conversation can't continue. Please tap New conversation and ask again.");
-  }
-}
+export { ConversationBusyError, ConversationBrokenError };
 
 const runningTurns = new Set<string>();
 const EFFORT: Record<ConversationKind, Effort> = { GENERAL: "low", MORNING_REPLY: "low", EVENING_PLAN: "medium" };

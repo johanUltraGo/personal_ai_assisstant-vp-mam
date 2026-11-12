@@ -4,7 +4,7 @@ import { Prisma } from "@prisma/client";
 import Anthropic from "@anthropic-ai/sdk";
 import { InvalidTransitionError } from "../services/taskService";
 import { MissingApiKeyError } from "../ai/claude";
-import { ConversationBrokenError, ConversationBusyError } from "../assistant/agent";
+import { ConversationBrokenError, ConversationBusyError } from "../assistant/errors";
 
 export class NotFoundError extends Error {}
 export class BadRequestError extends Error {}

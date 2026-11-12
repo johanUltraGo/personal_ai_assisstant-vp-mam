@@ -6,6 +6,10 @@ prisma/dev.db
 prisma/dev.db-journal
 prisma/test.db
 prisma/test.db-journal
+prisma/eval.db
+prisma/eval.db-journal
+prisma/e2e.db
+prisma/e2e.db-journal
 uploads/
 backups/
 logs/

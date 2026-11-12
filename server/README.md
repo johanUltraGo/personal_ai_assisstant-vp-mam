@@ -11,7 +11,7 @@ npm install
 cp .env.example .env          # ONLY if .env does not exist yet - never over an existing one
 npx prisma migrate deploy     # creates prisma/dev.db
 npm run dev                   # http://localhost:4000 (stops when you close the window)
-npm test                      # 137 tests on a separate test.db, no network or keys needed
+npm test                      # 141 tests on a separate test.db, no network or keys needed
 npm run typecheck
 ```
 
@@ -29,6 +29,17 @@ npm run service:uninstall     # remove the startup task
 It runs as the scheduled task **VP Assistant**. If the server ever stops, it is restarted within 5 seconds. The log is `server/logs/server.log`. While the service runs, don't also start `npm run dev`, because both use port 4000.
 
 > **If `npm` does nothing in PowerShell:** a stray empty file `C:\Windows\System32\npm` can shadow the real command. Use `npm.cmd` instead, or delete that file from an administrator PowerShell: `Remove-Item C:\Windows\System32\npm`.
+
+### https address (needed for her phone)
+
+1. Set `APP_ACCESS_PIN` and run `npm.cmd run service:restart`. The tunnel refuses to start without a PIN.
+2. Install Cloudflare's tunnel tool once: `winget install --id Cloudflare.cloudflared`.
+3. **Quick test:** `npm.cmd run tunnel` prints an `https://….trycloudflare.com` address. It works while that window stays open, and the address changes every time.
+4. **Permanent address** (needs a free Cloudflare account and a domain): `cloudflared tunnel login`, `cloudflared tunnel create vp`, `cloudflared tunnel route dns vp vp.yourschool.org`, then `cloudflared service install` with a config pointing to `http://localhost:4000`. In `.env` set `PUBLIC_ORIGIN=https://vp.yourschool.org`, `COOKIE_SECURE=true`, and change `GOOGLE_OAUTH_REDIRECT_URI` (and the one registered in Google Cloud) to `https://vp.yourschool.org/api/google/oauth/callback`.
+
+### Check the assistant (after adding the Claude key)
+
+`npm.cmd run eval` runs 16 real requests in Tamil, English and mixed (`evals/assistant-cases.json`) against the live assistant on a throwaway database, and reports which behaved correctly. This includes safety cases, such as asking when a name matches two people. It costs a few cents. Add a case whenever she says something it gets wrong.
 
 ### On her phone
 
@@ -57,7 +68,9 @@ Everything works without any keys except: the assistant (needs `ANTHROPIC_API_KE
 
 **7. Backups.** Every day at 02:00 the server saves a consistent copy of the database as `backups/vp-YYYY-MM-DD.db` (change the folder with `BACKUP_DIR`, how many days to keep with `BACKUP_KEEP_DAYS`, default 14). Point `BACKUP_DIR` at another disk or a synced folder (e.g. Google Drive for desktop). To restore: stop the server, copy a backup over `prisma/dev.db`, start again.
 
-**8. Contacts.** Add people and groups (e.g. "Parents group – Class 8", "Teachers group") under Messages → Contacts. The assistant only sends to contacts that exist here.
+**8. Privacy: old chats.** Set `CONVERSATION_RETENTION_DAYS` (e.g. `30`) to delete assistant chats idle that long, every night at 02:00. Empty keeps them. Tasks, reminders and the sent-message record are never deleted.
+
+**9. Contacts.** Add people and groups (e.g. "Parents group – Class 8", "Teachers group") under Messages → Contacts. The assistant only sends to contacts that exist here.
 
 ## Safety rules built into the code
 - Only `POST /api/messaging/pending/:id/send` can send, and only a preview the server stored and showed, once, within 30 minutes. The assistant has no send tool.

@@ -3,6 +3,7 @@ import { schoolTimezone } from "../services/morningListService";
 import { raiseDuePrompts, syncConfiguredCalendar } from "../services/calendarService";
 import { notifierFromEnvironment } from "../notifiers/notifier";
 import { backupDatabase } from "../services/backupService";
+import { deleteOldConversations } from "../services/retentionService";
 
 async function syncCalendar() {
   try {
@@ -23,6 +24,12 @@ async function eventAlerts() {
 }
 
 async function backup() {
+  try {
+    await deleteOldConversations();
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[privacy] chat cleanup failed:", (err as Error).message);
+  }
   try {
     await backupDatabase();
   } catch (err) {
