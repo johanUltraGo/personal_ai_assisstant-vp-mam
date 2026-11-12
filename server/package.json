@@ -11,7 +11,11 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "service:install": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-service.ps1",
+    "service:restart": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/restart-service.ps1",
+    "service:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stop-server.ps1",
+    "service:uninstall": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/uninstall-service.ps1"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.7.0",

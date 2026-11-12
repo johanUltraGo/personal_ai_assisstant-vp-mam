@@ -8,3 +8,4 @@ prisma/test.db
 prisma/test.db-journal
 uploads/
 backups/
+logs/

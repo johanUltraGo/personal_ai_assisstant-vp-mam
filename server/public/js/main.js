@@ -22,7 +22,8 @@ api("/api/auth/status")
   .then((status) => (status.pinRequired && !status.signedIn ? showLogin() : loadAll()))
   .catch(() => loadAll());
 
-// Keep the service worker current once notifications were turned on.
+// Service worker on every visit: lets the phone install the app (icon on the
+// home screen, opens full-screen) and receive notifications.
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.getRegistration().then((reg) => reg && reg.update()).catch(() => {});
+  navigator.serviceWorker.register("/sw.js").then((reg) => reg.update()).catch(() => {});
 }

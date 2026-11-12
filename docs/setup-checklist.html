@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Vice Principal AI — Setup Checklist</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm; }
+  body { font-family: "Segoe UI", Arial, sans-serif; font-size: 10.5pt; color: #111; line-height: 1.4; }
+  h1 { font-size: 17pt; margin: 0 0 2pt; }
+  .sub { color: #555; margin: 0 0 10pt; }
+  h2 { font-size: 12pt; margin: 12pt 0 4pt; padding: 3pt 6pt; background: #eef2f8; border-left: 4px solid #3b5ba9; break-after: avoid; }
+  .time { font-weight: normal; color: #555; font-size: 9.5pt; }
+  ul { list-style: none; padding-left: 4pt; margin: 4pt 0; }
+  li { margin: 3pt 0 3pt 18pt; text-indent: -18pt; break-inside: avoid; }
+  li::before { content: "☐"; display: inline-block; width: 18pt; text-indent: 0; font-size: 11pt; }
+  code, pre { font-family: Consolas, "Courier New", monospace; font-size: 9.5pt; }
+  pre { background: #f5f5f5; border: 1px solid #ddd; padding: 5pt 7pt; margin: 4pt 0 4pt 18pt; white-space: pre-wrap; }
+  .note { font-size: 9.5pt; color: #444; margin-left: 18pt; }
+  .box { border: 1px dashed #999; padding: 6pt 8pt; margin-top: 10pt; font-size: 9.5pt; }
+  .write { display: inline-block; border-bottom: 1px solid #777; min-width: 160pt; }
+  section { break-inside: avoid; }
+</style>
+</head>
+<body>
+  <h1>Vice Principal AI — Setup Checklist</h1>
+  <p class="sub">Project folder: <code>C:\personal-ai-assisstant</code> &nbsp;·&nbsp; Full details: <code>server\README.md</code> &nbsp;·&nbsp; Steps 1–2 ≈ 15 min, step 3 ≈ 20 min</p>
+
+  <section>
+  <h2>1. Create the settings file</h2>
+  <ul>
+    <li>Open PowerShell and open the settings file (it already exists — do <b>not</b> copy .env.example over it):</li>
+  </ul>
+  <pre>cd C:\personal-ai-assisstant\server
+notepad .env</pre>
+  <ul>
+    <li><code>APP_ACCESS_PIN=</code> a PIN of 6+ digits (only you and Uma know it)</li>
+    <li><code>SCHOOL_NAME=</code> the school's name</li>
+    <li><code>VAPID_SUBJECT=</code> change to <code>mailto:</code> + your email</li>
+  </ul>
+  <p class="note">Already filled in for you: <code>TOKEN_ENCRYPTION_KEY</code>, <code>VAPID_PUBLIC_KEY</code>, <code>VAPID_PRIVATE_KEY</code> — leave them as they are.</p>
+  </section>
+
+  <section>
+  <h2>2. Claude key — turns on the assistant</h2>
+  <ul>
+    <li>Go to <b>console.anthropic.com</b> → sign in → add billing</li>
+    <li>API Keys → <b>Create Key</b></li>
+    <li>Paste it into <code>.env</code> as <code>ANTHROPIC_API_KEY=</code></li>
+  </ul>
+  </section>
+
+  <section>
+  <h2>3. Gmail and Drive — Google Cloud <span class="time">(≈ 20 min)</span></h2>
+  <ul>
+    <li>Go to <b>console.cloud.google.com</b> → create a project (e.g. "VP Assistant")</li>
+    <li>APIs &amp; Services → Library → enable <b>Gmail API</b> and <b>Google Drive API</b></li>
+    <li>OAuth consent screen:
+      <b>Internal</b> if the school email is Google Workspace;
+      otherwise <b>External</b> + add Uma's email as a test user
+      <span class="note">(External = she signs in again every 7 days)</span></li>
+    <li>Credentials → Create credentials → OAuth client ID → <b>Web application</b></li>
+    <li>Add this redirect URI exactly:</li>
+  </ul>
+  <pre>http://localhost:4000/api/google/oauth/callback</pre>
+  <ul>
+    <li>Copy the client ID and secret into <code>GOOGLE_OAUTH_CLIENT_ID=</code> and <code>GOOGLE_OAUTH_CLIENT_SECRET=</code></li>
+  </ul>
+  </section>
+
+  <section>
+  <h2>4. Load the new settings</h2>
+  <p class="note">The app already runs in the background (it starts with Windows). After editing <code>.env</code>, restart it:</p>
+  <pre>npm.cmd run service:restart</pre>
+  <ul>
+    <li>Open <b>http://localhost:4000</b> and enter the PIN</li>
+  </ul>
+  <p class="note">Use <code>npm.cmd</code>: a stray empty file <code>C:\Windows\System32\npm</code> hides the normal <code>npm</code> in PowerShell.</p>
+  </section>
+
+  <section>
+  <h2>5. Set it up on the page</h2>
+  <ul>
+    <li><b>Connections</b> → Connect Google account → sign in with the school account (and her personal one if needed)</li>
+    <li><b>Messages → Contacts and groups</b> → add "Parents group", "Teachers group" and key staff</li>
+    <li><b>School calendar</b> → paste the Drive link of the calendar file, or upload it</li>
+    <li><b>Talk to your assistant</b> → try: "Remind me in 5 minutes to check the attendance"</li>
+  </ul>
+  </section>
+
+  <section>
+  <h2>6. Tell Claude it's running</h2>
+  <ul>
+    <li>Ask for a live check of the assistant, sending an email, reading a Drive file and the calendar</li>
+  </ul>
+  </section>
+
+  <section>
+  <h2>Later — before Uma uses it on her phone</h2>
+  <ul>
+    <li><b>Hosting:</b> an always-on computer or server with an <b>https</b> address (notifications need https)</li>
+    <li>On her phone: open the https address in Chrome → menu → <b>Install app</b> (icon on her home screen)</li>
+    <li>Then in the app → Connections → <b>Turn on notifications on this phone</b></li>
+    <li>Uma tests each feature (the spec requires it before each phase is signed off)</li>
+  </ul>
+  </section>
+
+  <div class="box">
+    <b>Notes</b> &nbsp; Google account used: <span class="write"></span> &nbsp;&nbsp; Date set up: <span class="write" style="min-width:90pt"></span><br><br>
+    Never write the PIN or keys on this sheet. Keep the <code>.env</code> file private — never share or upload it.
+  </div>
+</body>
+</html>

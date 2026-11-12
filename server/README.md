@@ -8,12 +8,31 @@ Design: `docs/superpowers/specs/2026-11-10-assistant-completion-design.md`. Stat
 ```bash
 cd server
 npm install
-cp .env.example .env          # then fill in what you need (below)
+cp .env.example .env          # ONLY if .env does not exist yet - never over an existing one
 npx prisma migrate deploy     # creates prisma/dev.db
-npm run dev                   # http://localhost:4000
-npm test                      # 112 tests, no network or keys needed
+npm run dev                   # http://localhost:4000 (stops when you close the window)
+npm test                      # 137 tests on a separate test.db, no network or keys needed
 npm run typecheck
 ```
+
+### Keep it running (Windows)
+
+Reminders, the 9:00 list and calendar alerts only happen while the server runs.
+
+```bash
+npm run service:install       # build, start now, and start again at every Windows log-in
+npm run service:restart       # after editing .env or updating the code
+npm run service:stop          # stop it (until the next log-in)
+npm run service:uninstall     # remove the startup task
+```
+
+It runs as the scheduled task **VP Assistant**. If the server ever stops, it is restarted within 5 seconds. The log is `server/logs/server.log`. While the service runs, don't also start `npm run dev`, because both use port 4000.
+
+> **If `npm` does nothing in PowerShell:** a stray empty file `C:\Windows\System32\npm` can shadow the real command. Use `npm.cmd` instead, or delete that file from an administrator PowerShell: `Remove-Item C:\Windows\System32\npm`.
+
+### On her phone
+
+Open the https address in Chrome, then menu → **Install app** (or **Add to Home screen**). She gets a "VP Assistant" icon that opens full-screen; a long press on it offers **Talk** and **Today**. Then Connections → *Turn on notifications on this phone*.
 
 Everything works without any keys except: the assistant (needs `ANTHROPIC_API_KEY`), real email/Drive (Google sign-in), and phone notifications (VAPID keys). Without them the page says what is missing.
 
@@ -32,7 +51,7 @@ Everything works without any keys except: the assistant (needs `ANTHROPIC_API_KE
 
 **4. School calendar.** Put the Drive link of the calendar in `SCHOOL_CALENDAR_FILE_ID`. It is read on startup and every day at 08:55; event alerts go out at 09:01 (and on startup between 9 AM and 6 PM). Formats: Google Sheet / CSV with *Date, Event, Type* columns (dates `DD/MM/YYYY` or `YYYY-MM-DD`; a row is a holiday when Type or the name says "holiday"), `.ics`, or a JSON list. You can also upload the file on the Calendar section.
 
-**5. Phone notifications.** Run `npx web-push generate-vapid-keys`, put the keys in `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`, set `VAPID_SUBJECT` to a `mailto:` address. The site must be served over **https** (or localhost). On her phone open the page in Chrome → Connections → *Turn on notifications on this phone*. Reminders become DELIVERED when the phone confirms it showed them.
+**5. Phone notifications.** The keys are already generated in `.env` (`VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`; to make new ones run `npx web-push generate-vapid-keys`). Set `VAPID_SUBJECT` to your own `mailto:` address. The site must be served over **https** (or localhost). On her phone open the page in Chrome → Connections → *Turn on notifications on this phone*. Reminders become DELIVERED when the phone confirms it showed them.
 
 **6. WhatsApp.** Works without setup: after *Send*, WhatsApp opens with the message typed and she taps send (for groups she picks the group). Optional Meta Business Cloud API (`WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`) sends automatically to individuals — but only free text within 24 hours of their last message; otherwise the app offers the hand-off link.
 
