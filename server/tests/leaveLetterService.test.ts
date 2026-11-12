@@ -60,3 +60,12 @@ describe("draftLeaveLetter", () => {
     expect(res.body.workingDays).toEqual(["2026-11-13"]);
   });
 });
+
+describe("school name", () => {
+  it("signs letters with SCHOOL_NAME when the form gives none", async () => {
+    process.env.SCHOOL_NAME = "Sri Vidya Mandir";
+    const letter = await draftLeaveLetter({ audience: "TEACHER", names: ["Mrs. Devi"], fromDate: "2026-11-13" });
+    delete process.env.SCHOOL_NAME;
+    expect(letter.body).toContain("Sri Vidya Mandir");
+  });
+});

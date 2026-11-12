@@ -82,7 +82,7 @@ export async function draftLeaveLetter(input: LeaveLetterInput) {
     ? `\n\n(${skipped.map((s) => `${formatDay(s.date)} is ${s.reason === "Saturday" || s.reason === "Sunday" ? "a " + s.reason : s.reason}`).join("; ")} — not counted.)`
     : "";
   const reason = input.reason?.trim() ? ` Reason: ${input.reason.trim()}.` : "";
-  const organisation = input.schoolName?.trim() || "the school";
+  const organisation = input.schoolName?.trim() || process.env.SCHOOL_NAME?.trim() || "the school";
   const dateLabel = days.length === 1 ? formatDay(days[0]) : `${formatDay(input.fromDate)} – ${formatDay(to)}`;
 
   const body =

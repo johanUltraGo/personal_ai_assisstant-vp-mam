@@ -21,5 +21,7 @@ export default defineConfig({
     maxWorkers: 1,
     // Load shared modules (Prisma, Express) once instead of per file.
     isolate: false,
+    // Generous limit: file and database tests can be slow on a busy machine.
+    testTimeout: 20_000,
   },
 });
