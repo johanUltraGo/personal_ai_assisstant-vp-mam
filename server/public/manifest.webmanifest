@@ -14,7 +14,7 @@
     { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Talk to assistant", "short_name": "Talk", "url": "/#assistant-section", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Talk to assistant", "short_name": "Talk", "url": "/voice.html", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Today's work list", "short_name": "Today", "url": "/#morning-list-section", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

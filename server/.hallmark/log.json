@@ -1,0 +1,26 @@
+[
+ {
+  "scope": "app",
+  "shape": "app screen",
+  "theme": "lumen",
+  "axes": "dark/roman-serif/warm",
+  "hero": "none (app screen)",
+  "nav": "top bar: wordmark and one link",
+  "footer": "dock: orb, status, type instead",
+  "imagery": "none",
+  "photos": [],
+  "entry": "voice.html",
+  "signature": "brass orb that listens, thinks and speaks",
+  "sections": [
+   "bar",
+   "exchange",
+   "dock"
+  ],
+  "waived": [
+   "theme do-not: glowing orb (user words)"
+  ],
+  "prompt": "voice assistant overlay with a glowing Siri-style orb",
+  "date": "2026-11-16",
+  "mode": "build"
+ }
+]

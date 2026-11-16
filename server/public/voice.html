@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>VP Assistant · voice</title>
+  <meta name="description" content="Talk to the Vice Principal assistant in Tamil or English: one tap, a glowing orb that listens, thinks and answers." />
+  <meta name="theme-color" content="#0f0c17" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" type="image/png" href="/icons/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500&family=Geist+Mono&family=Instrument+Serif&display=swap" />
+  <link rel="stylesheet" href="voice/voice.css" />
+</head>
+<body data-state="idle">
+  <header class="bar">
+    <a class="wordmark" href="/">vp assistant</a>
+    <a class="pill-link" href="/">open the full app</a>
+  </header>
+
+  <main class="stage">
+    <section class="exchange" aria-live="polite" aria-label="Conversation">
+      <p class="heard" id="heard"></p>
+      <p class="reply" id="reply">Tap the light and speak. Tamil, English or both.</p>
+      <div class="cards" id="cards"></div>
+    </section>
+    <noscript><p class="reply">Voice needs JavaScript. <a href="/">Open the full app</a> to type instead.</p></noscript>
+  </main>
+
+  <footer class="dock">
+    <button class="orb" id="orb" type="button" aria-label="Tap to talk">
+      <span class="orb-ring" aria-hidden="true"></span>
+      <span class="orb-ring orb-ring-2" aria-hidden="true"></span>
+      <span class="orb-halo" aria-hidden="true"></span>
+      <span class="orb-core" aria-hidden="true"></span>
+      <span class="orb-sheen" aria-hidden="true"></span>
+    </button>
+    <p class="status" id="status" role="status">tap to talk</p>
+    <form class="type-form" id="type-form" hidden>
+      <label class="sr-only" for="type-input">Type your request</label>
+      <input id="type-input" type="text" autocomplete="off" placeholder="Remind me at 4 to call Mrs Iyer" />
+      <button class="pill pill-solid" type="submit">ask</button>
+    </form>
+    <button class="pill" id="type-toggle" type="button">type instead</button>
+  </footer>
+
+  <div class="pin" id="pin" hidden>
+    <form class="pin-box" id="pin-form">
+      <h1 class="pin-head">your pin</h1>
+      <label class="sr-only" for="pin-input">Access PIN</label>
+      <input id="pin-input" type="password" inputmode="numeric" autocomplete="current-password" required />
+      <button class="pill pill-solid" type="submit">open</button>
+      <p class="pin-error" id="pin-error" aria-live="polite"></p>
+    </form>
+  </div>
+
+  <script type="module" src="/js/voice.js"></script>
+</body>
+</html>

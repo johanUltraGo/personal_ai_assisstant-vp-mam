@@ -1,0 +1,193 @@
+import { api, setUnauthorizedHandler } from "./api.js";
+import { sendCard, planCard } from "./cards.js";
+
+// Voice overlay: one orb, four states (idle, listening, thinking, speaking),
+// talking to the same assistant API as the full app (/api/assistant/...).
+// Nothing is sent to anyone from here without her tapping Send on a card.
+
+const $ = (id) => document.getElementById(id);
+const orb = $("orb");
+const STATUS = {
+  idle: "tap to talk",
+  listening: "listening, tap to stop",
+  thinking: "thinking",
+  speaking: "speaking, tap to stop",
+  unavailable: "",
+};
+
+let conversationId = sessionStorageGet("vp-voice-conversation");
+let recognition = null;
+let lastInputWasVoice = false;
+
+function sessionStorageGet(key) {
+  try { return sessionStorage.getItem(key); } catch { return null; }
+}
+function sessionStorageSet(key, value) {
+  try { value ? sessionStorage.setItem(key, value) : sessionStorage.removeItem(key); } catch { /* private mode */ }
+}
+
+function setState(state, statusText) {
+  document.body.dataset.state = state;
+  $("status").textContent = statusText ?? STATUS[state];
+  orb.setAttribute("aria-label", state === "listening" || state === "speaking" ? "Tap to stop" : "Tap to talk");
+}
+
+function showReply(text) {
+  $("reply").textContent = text;
+}
+
+async function ensureConversation() {
+  if (conversationId) return conversationId;
+  const convo = await api("/api/assistant/conversations", { json: { kind: "GENERAL" } });
+  conversationId = convo.id;
+  sessionStorageSet("vp-voice-conversation", conversationId);
+  return conversationId;
+}
+
+async function ask(text, inputMode) {
+  const words = text.trim();
+  if (!words) return setState("idle");
+  lastInputWasVoice = inputMode === "VOICE";
+  $("heard").textContent = words;
+  $("cards").replaceChildren();
+  setState("thinking");
+  try {
+    const id = await ensureConversation();
+    let result;
+    try {
+      result = await api(`/api/assistant/conversations/${id}/messages`, { json: { text: words, inputMode } });
+    } catch (err) {
+      // A finished or broken conversation: start a fresh one once and retry.
+      if (/start again|New conversation|no longer exists/i.test(err.message)) {
+        conversationId = null;
+        sessionStorageSet("vp-voice-conversation", null);
+        result = await api(`/api/assistant/conversations/${await ensureConversation()}/messages`, { json: { text: words, inputMode } });
+      } else {
+        throw err;
+      }
+    }
+    showReply(result.reply);
+    for (const card of result.cards) {
+      if (card.type === "send") $("cards").append(sendCard(card.pending));
+      if (card.type === "plan") $("cards").append(await planCard(card.proposalId));
+    }
+    if (lastInputWasVoice) speak(result.reply);
+    else setState("idle");
+  } catch (err) {
+    showReply(err.message);
+    setState(/not set up|ANTHROPIC_API_KEY/i.test(err.message) ? "unavailable" : "idle", /not set up|ANTHROPIC_API_KEY/i.test(err.message) ? "assistant not set up" : undefined);
+  }
+}
+
+// Speaking: read the reply aloud; each spoken word gives the orb one beat.
+function speak(text) {
+  if (!("speechSynthesis" in window) || !text) return setState("idle");
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = /[஀-௿]/.test(text) ? "ta-IN" : "en-IN";
+  utterance.onstart = () => setState("speaking");
+  utterance.onboundary = () => {
+    orb.classList.remove("beat");
+    void orb.offsetWidth; // restart the beat animation
+    orb.classList.add("beat");
+  };
+  utterance.onend = utterance.onerror = () => {
+    orb.classList.remove("beat");
+    if (document.body.dataset.state === "speaking") setState("idle");
+  };
+  window.speechSynthesis.speak(utterance);
+}
+
+// Listening: browser speech recognition. Tamil recognisers also catch common
+// English words; the assistant handles mixed Tamil-English text.
+function listen() {
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Recognition) return;
+  recognition = new Recognition();
+  recognition.lang = "ta-IN";
+  recognition.interimResults = true;
+  recognition.continuous = false;
+  let transcript = "";
+  recognition.onstart = () => setState("listening");
+  recognition.onresult = (event) => {
+    transcript = Array.from(event.results).map((r) => r[0].transcript).join(" ");
+    $("heard").textContent = transcript;
+  };
+  recognition.onerror = (event) => {
+    if (event.error !== "aborted" && event.error !== "no-speech") setState("idle", `didn't catch that (${event.error})`);
+  };
+  recognition.onend = () => {
+    recognition = null;
+    if (transcript.trim()) ask(transcript, "VOICE");
+    else if (document.body.dataset.state === "listening") setState("idle", "didn't hear anything, tap to try again");
+  };
+  try {
+    recognition.start();
+  } catch {
+    setState("idle");
+  }
+}
+
+orb.addEventListener("click", () => {
+  const state = document.body.dataset.state;
+  if (state === "speaking") {
+    window.speechSynthesis.cancel();
+    return setState("idle");
+  }
+  if (state === "listening") return recognition?.stop();
+  if (state === "thinking") return;
+  window.speechSynthesis?.cancel();
+  listen();
+});
+
+// Typing works too (spec §4).
+$("type-toggle").addEventListener("click", () => {
+  const form = $("type-form");
+  form.hidden = !form.hidden;
+  $("type-toggle").textContent = form.hidden ? "type instead" : "hide keyboard";
+  if (!form.hidden) $("type-input").focus();
+});
+$("type-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const input = $("type-input");
+  const text = input.value;
+  input.value = "";
+  ask(text, "TYPED");
+});
+
+// Signed out: the PIN sheet.
+setUnauthorizedHandler((body) => {
+  if (body && body.pinRequired) {
+    $("pin").hidden = false;
+    $("pin-input").focus();
+  }
+});
+$("pin-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    await api("/api/auth/login", { json: { pin: $("pin-input").value } });
+    $("pin").hidden = true;
+    $("pin-error").textContent = "";
+    setState("idle");
+  } catch (err) {
+    $("pin-error").textContent = err.message;
+  }
+});
+
+// Start: check sign-in and whether voice is available here.
+if (!(window.SpeechRecognition || window.webkitSpeechRecognition)) {
+  $("type-form").hidden = false;
+  $("type-toggle").hidden = true;
+  setState("idle", "voice isn't available in this browser, type instead");
+} else {
+  setState("idle");
+}
+api("/api/auth/status")
+  .then((s) => {
+    if (s.pinRequired && !s.signedIn) {
+      $("pin").hidden = false;
+      $("pin-input").focus();
+    }
+  })
+  .catch(() => {});
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
