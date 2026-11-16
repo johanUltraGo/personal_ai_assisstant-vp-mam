@@ -17,10 +17,20 @@ if ($LASTEXITCODE -ne 0) { throw "Build failed - fix the errors above and run th
 Write-Host "3/4 Registering the '$taskName' startup task..."
 & (Join-Path $PSScriptRoot "stop-server.ps1") -Quiet
 $runner = Join-Path $PSScriptRoot "run-forever.ps1"
-$action = New-ScheduledTaskAction -Execute "powershell.exe" `
-  -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$runner`"" -WorkingDirectory $server
-$trigger = New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\$env:USERNAME"
-$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
+# conhost --headless gives PowerShell a console with no window. Without it,
+# Windows 11 can hand the console to Windows Terminal, and closing that hidden
+# window ends the server with a Ctrl+C (exit 0xC000013A).
+$action = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\conhost.exe" `
+  -Argument "--headless powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$runner`"" -WorkingDirectory $server
+# Start 30 s after log-in, then every 5 minutes act as a watchdog: if the
+# server is not running it is started again; if it is, nothing happens
+# (MultipleInstances IgnoreNew), so there is never a second copy.
+$atLogOn = New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\$env:USERNAME"
+$atLogOn.Delay = "PT30S"
+# Separate watchdog trigger: starts now and repeats every 5 minutes, forever.
+$watchdog = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 5)
+$trigger = @($atLogOn, $watchdog)
+$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew `
   -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) -StartWhenAvailable
 Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings `
   -Description "Keeps the Vice Principal AI server running (reminders, 9:00 list, calendar alerts)." -Force | Out-Null
