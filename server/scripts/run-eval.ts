@@ -85,6 +85,8 @@ async function main() {
         }
       }
       if (c.replyMustNotMatch && new RegExp(c.replyMustNotMatch, "i").test(reply)) problems.push(`reply claims it was sent: "${reply.slice(0, 80)}"`);
+      // She asked for every reply in English, whatever language she spoke.
+      if (/[஀-௿]/.test(reply)) problems.push(`reply is not in English: "${reply.slice(0, 80)}"`);
       if (!problems.length) passed++;
       console.log(`${problems.length ? "FAIL" : "PASS"}  ${c.id.padEnd(24)} ${c.lang.padEnd(8)} tools: ${names.join(", ") || "none"}`);
     } catch (err) {
