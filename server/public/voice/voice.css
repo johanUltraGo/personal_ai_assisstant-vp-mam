@@ -1,136 +1,300 @@
-/* Hallmark · shape: app screen · genre: atmospheric · theme: Lumen (deal 1/3, seed voice-assistant-overlay-glowing-983b·da3074f0·2026-11-16·r0)
- * nav: a quiet top bar, wordmark and one link back to the full app · signature: the brass orb at the bottom centre that listens, thinks and speaks · states: idle, listening, thinking, speaking, not set up, signed out, no voice in this browser
- * axes: dark/roman-serif/warm · posture: restrained · contrast: pass · lumen: night · v2.0.0
- * override (user's words beat the theme): Lumen forbids a glowing object and ambient motion; the user asked for a glowing orb that pulses, so the orb is built in Lumen's brass and moves only to show state */
-/* Hallmark · pre-emit critique: P3 H3 E3 S4 R3 V3 · weakest: R (the screen is one object), so the reply is set large in Instrument Serif and the orb carries the screen */
+/* Hallmark · shape: app screen · genre: atmospheric · theme: custom (the user's palette, by request) · redesign: full
+ * idea: "a crystal lamp on the vice principal's desk, with the day laid out beside it" · vibe: "calm executive desk, lit when listening"
+ * paper: #F1F5F9 platinum · accent: #0F766E moss teal for anything live, #B45309 champagne gold for titles · display: Spectral · body: Public Sans (Noto Tamil faces for Tamil)
+ * nav: a top bar, wordmark and one link back to the full app · signature: the faceted crystal core that pulses teal when listening and turns gold when thinking
+ * states: idle, listening, thinking, speaking, not set up, signed out, no voice in this browser; every rail list loading, empty, error, full
+ * axes: light/roman-serif/chromatic-teal · posture: restrained · contrast: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P3 H4 E3 S4 R3 V4 · weakest: R (a narrow tool), so the crystal and the reply set large carry the left, the day carries the right */
+/* Hallmark · answered 74: #1E293B, #334155, #F1F5F9, #0F766E and #B45309 are the user's own specified palette, kept exactly */
 @import url("./tokens.css");
 @import url("./base.css");
 
 :root {
-  /* Orb palette, derived from Lumen's brass and ground only. */
-  --orb-core: color-mix(in oklch, var(--color-accent) 92%, var(--color-ink));
-  --orb-mid: var(--color-accent);
-  --orb-edge: color-mix(in oklch, var(--color-accent) 55%, var(--color-paper));
-  --orb-halo: color-mix(in oklch, var(--color-accent) 52%, var(--color-paper));
-  --orb-ring: color-mix(in oklch, var(--color-accent) 60%, var(--color-paper));
-  --orb-shade: color-mix(in oklch, var(--color-accent) 10%, var(--color-paper));
-  --orb-size: 7.5rem;
+  --crystal-size: 7.5rem;
   --dur-listen: 1300ms;
-  --dur-think: 2600ms;
-  --dur-beat: 260ms;
+  --dur-think: 2400ms;
+  --dur-beat: 280ms;
+  --frost: color-mix(in oklab, var(--color-paper-2) 76%, transparent);
 }
 
 html, body { overflow-x: clip; }
 body {
   min-height: 100dvh;
   display: grid;
-  grid-template-rows: auto 1fr auto;
-  background: var(--color-paper);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "bar" "rail" "stage" "dock";
+  grid-template-rows: auto auto 1fr auto;
+  background:
+    radial-gradient(50rem 32rem at 30% 105%, color-mix(in oklab, var(--color-teal) 9%, transparent), transparent 70%),
+    radial-gradient(36rem 26rem at 100% 0%, color-mix(in oklab, var(--color-gold) 6%, transparent), transparent 70%),
+    var(--color-paper);
 }
 
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+:where(a, button, input, summary):focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; transition: none; }
 
 /* Top bar */
 .bar {
-  width: min(100%, 34rem);
-  margin-inline: auto;
-  padding: var(--space-md) var(--gutter);
+  grid-area: bar;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: var(--space-sm);
+  min-height: 4rem;
+  padding: var(--space-sm) var(--gutter);
 }
-.wordmark { font-family: var(--font-display); font-size: var(--text-xl); color: var(--color-ink); text-decoration: none; }
-.pill-link { color: var(--color-muted); font-size: var(--text-sm); text-decoration: none; padding: var(--space-2xs) var(--space-xs); border-radius: var(--radius-pill); }
-.pill-link:hover { color: var(--color-ink); text-decoration: underline; text-decoration-color: var(--color-accent); }
+.wordmark {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 500;
+  color: var(--color-gold);
+  text-decoration: none;
+}
+.pill-link {
+  color: var(--color-muted);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-pill);
+  transition: color var(--dur-micro) var(--ease-out), background-color var(--dur-micro) var(--ease-out);
+}
+.pill-link:hover { color: var(--color-ink); background: var(--frost); }
 
-/* The exchange: what she said, and the answer */
+/* The rail: today's schedule and the parents' group, in frosted panels */
+.rail {
+  grid-area: rail;
+  display: grid;
+  gap: var(--space-sm);
+  align-content: start;
+  padding: 0 var(--gutter) var(--space-sm);
+}
+.panel {
+  background: var(--frost);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+  backdrop-filter: blur(14px) saturate(1.15);
+  border: var(--rule-hair) solid var(--color-rule-2);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+.panel-summary {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  min-height: 2.75rem;
+  padding: var(--space-sm) var(--space-md);
+  list-style: none;
+  cursor: pointer;
+  border-radius: var(--radius-card);
+}
+.panel-summary::-webkit-details-marker { display: none; }
+.panel-summary::after {
+  content: "";
+  align-self: center;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-inline-start: var(--space-2xs);
+  border-right: 1.5px solid var(--color-muted);
+  border-bottom: 1.5px solid var(--color-muted);
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform var(--dur-short) var(--ease-out);
+}
+.panel[open] > .panel-summary::after { transform: rotate(225deg) translate(-2px, -1px); }
+.panel-summary:hover .panel-head { color: var(--color-gold-deep); }
+.panel-head {
+  font-size: var(--text-xl);
+  color: var(--color-gold);
+  max-width: none;
+  transition: color var(--dur-micro) var(--ease-out);
+}
+.panel-count { margin-inline-start: auto; font-size: var(--text-sm); color: var(--color-muted); white-space: nowrap; }
+.panel-body { padding: 0 var(--space-md) var(--space-md); }
+.panel-sub {
+  margin: var(--space-md) 0 var(--space-2xs);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--color-ink-2);
+}
+.panel-note { margin-top: var(--space-xs); font-size: var(--text-sm); color: var(--color-muted); }
+#schedule-confirmed { color: var(--color-teal); }
+
+/* Rows: time and status on one line, the title under them */
+.rows { list-style: none; margin: 0; padding: 0; display: grid; }
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "time status" "title title";
+  column-gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  border-top: var(--rule-hair) solid var(--color-rule);
+}
+.row:first-child { border-top: 0; }
+.row-time { grid-area: time; font-size: var(--text-sm); color: var(--color-muted); font-variant-numeric: tabular-nums; }
+.row-status, .row-action { grid-area: status; font-size: var(--text-sm); color: var(--color-muted); text-align: end; }
+.row-title { grid-area: title; min-width: 0; overflow-wrap: break-word; color: var(--color-ink); }
+.row-action { color: var(--color-teal); text-decoration: underline; text-decoration-color: color-mix(in oklab, var(--color-teal) 40%, transparent); }
+.row-action:hover { text-decoration-color: var(--color-teal); }
+.slot.is-now {
+  border-radius: var(--radius-row);
+  border-top-color: transparent;
+  background: color-mix(in oklab, var(--color-teal) 9%, transparent);
+  box-shadow: inset 2px 0 0 var(--color-teal);
+}
+.slot.is-now + .row { border-top-color: transparent; }
+.is-now .row-status { color: var(--color-teal); font-weight: 600; }
+.row[data-status="OVERDUE"] .row-status, .row[data-status="FAILED"] .row-status, .row[data-status="BLOCKED"] .row-status { color: var(--color-gold); font-weight: 600; }
+.row[data-status="COMPLETED"] .row-title, .row[data-status="CANCELLED"] .row-title { color: var(--color-muted); text-decoration: line-through; text-decoration-color: var(--color-rule-2); }
+.row-note { padding: var(--space-xs) var(--space-sm); font-size: var(--text-sm); color: var(--color-muted); }
+.row-error { color: var(--color-error); }
+.link-button {
+  min-height: 2rem;
+  padding: 0 var(--space-2xs);
+  border: 0;
+  background: transparent;
+  color: var(--color-teal);
+  font-size: var(--text-sm);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.skeleton {
+  height: 2.75rem;
+  margin-block: var(--space-2xs);
+  border-radius: var(--radius-row);
+  background: var(--color-paper-3);
+  animation: skeleton 1.4s var(--ease-in-out) infinite;
+}
+.sync { display: grid; justify-items: start; gap: var(--space-2xs); margin-top: var(--space-md); }
+
+/* The exchange: what she said, and the answer, as two bubbles */
 .stage {
-  width: min(100%, 34rem);
-  margin-inline: auto;
-  padding: var(--space-lg) var(--gutter);
+  grid-area: stage;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   min-height: 0;
+  padding: var(--space-lg) var(--gutter) var(--space-md);
 }
-.exchange { display: grid; gap: var(--space-md); }
-.heard { margin: 0; color: var(--color-muted); font-size: var(--text-md); min-height: 1.55em; overflow-wrap: break-word; }
+.exchange { display: grid; gap: var(--space-md); width: min(100%, 40rem); margin-inline: auto; }
+.bubble {
+  display: grid;
+  gap: var(--space-2xs);
+  max-width: min(100%, 34rem);
+  padding: var(--space-sm) var(--space-md) var(--space-md);
+  border: var(--rule-hair) solid var(--color-rule-2);
+  border-radius: var(--radius-card);
+  transition: border-color var(--dur-short) var(--ease-out), opacity var(--dur-short) var(--ease-out);
+}
+.bubble-you {
+  justify-self: end;
+  background: color-mix(in oklab, var(--color-teal) 7%, var(--color-paper-2));
+  border-color: color-mix(in oklab, var(--color-teal) 30%, var(--color-paper));
+  border-end-end-radius: var(--space-2xs);
+}
+.bubble-you:has(.heard:empty) { display: none; }
+body[data-state="listening"] .bubble-you { border-color: var(--color-teal); }
+.bubble-reply {
+  justify-self: start;
+  background: var(--frost);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: var(--shadow-card);
+  border-end-start-radius: var(--space-2xs);
+}
+body[data-state="thinking"] .bubble-reply { opacity: 0.5; }
+.bubble-meta { font-size: var(--text-sm); color: var(--color-muted); }
+.bubble-you .bubble-lang { color: var(--color-teal); }
+.bubble-reply .bubble-lang { color: var(--color-gold); }
+.heard { margin: 0; font-size: var(--text-lg); color: var(--color-ink); overflow-wrap: break-word; min-width: 0; }
+.heard:lang(ta) { line-height: 1.75; }
 .reply {
   margin: 0;
   font-family: var(--font-display);
   font-size: var(--text-2xl);
-  line-height: 1.15;
+  line-height: 1.25;
   color: var(--color-ink);
   overflow-wrap: break-word;
   min-width: 0;
-  max-width: 24ch;
-  transition: opacity var(--dur-short) var(--ease-out);
 }
-body[data-state="thinking"] .reply { opacity: 0.45; }
-.reply a { color: var(--color-ink); text-decoration-color: var(--color-accent); }
+.reply:lang(ta) { font-size: var(--text-xl); line-height: 1.7; }
+.reply a { color: var(--color-ink); text-decoration-color: var(--color-gold); }
 
 /* Cards from the assistant: Send? and the evening plan */
 .cards { display: grid; gap: var(--space-sm); }
-.cards .card { color: var(--color-ink); background: var(--color-paper-2); border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-card); padding: var(--space-md); }
-.cards .card h4 { margin: 0 0 var(--space-xs); font-size: var(--text-sm); font-weight: 500; color: var(--color-ink-2); }
-.cards .message-body { white-space: pre-wrap; background: var(--color-paper); border: var(--rule-hair) solid var(--color-rule); border-radius: var(--radius-card); padding: var(--space-sm); color: var(--color-ink); }
+.cards .card {
+  color: var(--color-ink);
+  background: var(--frost);
+  border: var(--rule-hair) solid var(--color-rule-2);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-md);
+}
+.cards .card h4 { margin: 0 0 var(--space-xs); font-size: var(--text-sm); font-weight: 600; color: var(--color-ink-2); }
+.cards .message-body { white-space: pre-wrap; margin-block: var(--space-xs); padding: var(--space-2xs) 0 var(--space-2xs) var(--space-sm); border-left: 2px solid var(--color-gold); color: var(--color-ink); }
 .cards .button-row { display: flex; flex-wrap: wrap; gap: var(--space-xs); margin-top: var(--space-sm); }
 .cards .hint { color: var(--color-muted); font-size: var(--text-sm); }
 .cards table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
-.cards input { width: 100%; background: var(--color-paper); color: var(--color-ink); border: var(--rule-hair) solid var(--color-rule-2); border-radius: 6px; padding: var(--space-3xs) var(--space-2xs); font: inherit; }
+.cards th { text-align: start; font-weight: 600; color: var(--color-ink-2); padding-bottom: var(--space-2xs); }
+.cards td { padding-block: var(--space-3xs); border-top: var(--rule-hair) solid var(--color-rule); }
+.cards input { width: 100%; background: var(--color-paper-2); color: var(--color-ink); border: var(--rule-hair) solid var(--color-rule-2); border-radius: var(--radius-row); padding: var(--space-3xs) var(--space-2xs); font: inherit; }
 .cards .card.done { opacity: 0.7; }
 
 /* Controls */
 .pill, .cards button {
-  min-height: 2.75rem;
+  min-height: 2.5rem;
   padding: 0 var(--space-md);
   border-radius: var(--radius-pill);
   border: var(--rule-hair) solid var(--color-rule-2);
-  background: transparent;
-  color: var(--color-ink);
+  background: var(--frost);
+  color: var(--color-ink-2);
   font: inherit;
   font-size: var(--text-sm);
+  font-weight: 500;
   cursor: pointer;
-  transition: background-color var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out);
+  transition: background-color var(--dur-micro) var(--ease-out), color var(--dur-micro) var(--ease-out), border-color var(--dur-micro) var(--ease-out);
 }
-.pill:hover, .cards button:hover { background: var(--color-paper-2); }
+.pill:hover, .cards button:hover { background: var(--color-paper-2); border-color: var(--color-ink-2); color: var(--color-ink); }
 .pill:active, .cards button:active { transform: translateY(1px); }
-.pill-solid, .cards button.primary { background: var(--color-accent); color: var(--color-accent-ink); border-color: var(--color-accent); font-weight: 500; }
-.pill-solid:hover, .cards button.primary:hover { background: var(--orb-core); }
-.pill:disabled, .cards button:disabled { opacity: 0.5; cursor: not-allowed; }
+.pill-solid, .cards button.primary { background: var(--color-teal); color: var(--color-accent-ink); border-color: var(--color-teal); }
+.pill-solid:hover, .cards button.primary:hover { background: var(--color-teal-deep); border-color: var(--color-teal-deep); color: var(--color-accent-ink); }
+.pill:disabled, .cards button:disabled { opacity: 0.55; cursor: not-allowed; }
+.pill[data-busy] { border-color: var(--color-teal); color: var(--color-teal); }
+@media (pointer: coarse) { .pill, .cards button { min-height: 2.75rem; } }
 
-:where(a, button, input):focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; transition: none; }
-
-/* The dock: orb, status, typing */
+/* The dock: crystal, status, typing */
 .dock {
+  grid-area: dock;
   display: grid;
   justify-items: center;
   gap: var(--space-xs);
-  padding: var(--space-md) var(--gutter) calc(var(--space-xl) + env(safe-area-inset-bottom));
+  padding: var(--space-md) var(--gutter) calc(var(--space-lg) + env(safe-area-inset-bottom));
 }
-.status { margin: 0; font-family: var(--font-outlier); font-size: 0.8125rem; color: var(--color-muted); min-height: 1.4em; text-align: center; }
-body[data-state="listening"] .status, body[data-state="speaking"] .status { color: var(--color-ink-2); }
+.status { margin: 0; font-size: var(--text-sm); color: var(--color-muted); min-height: 1.5em; text-align: center; }
+body[data-state="listening"] .status, body[data-state="speaking"] .status { color: var(--color-teal); font-weight: 500; }
+body[data-state="thinking"] .status { color: var(--color-gold); font-weight: 500; }
 .type-form { display: flex; gap: var(--space-xs); width: min(100%, 30rem); }
 .type-form input {
   flex: 1;
   min-width: 0;
   min-height: 2.75rem;
-  padding: 0 var(--space-sm);
+  padding: 0 var(--space-md);
   background: var(--color-paper-2);
   color: var(--color-ink);
   border: var(--rule-hair) solid var(--color-rule-2);
   border-radius: var(--radius-pill);
   font: inherit;
+  font-size: max(16px, var(--text-md));
 }
 .type-form input::placeholder { color: var(--color-muted); }
+.type-form input:focus-visible { outline-offset: -2px; }
+.type-form .pill { min-height: 2.75rem; }
 
-/* The orb. Every motion is transform or opacity. */
-.orb {
+/* The crystal core. Every motion is transform or opacity. */
+.crystal {
   position: relative;
-  width: var(--orb-size);
-  height: var(--orb-size);
-  margin-bottom: var(--space-xs);
+  width: var(--crystal-size);
+  height: var(--crystal-size);
+  margin-block: var(--space-xs);
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -138,68 +302,127 @@ body[data-state="listening"] .status, body[data-state="speaking"] .status { colo
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.orb > span { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; }
-.orb-halo {
-  inset: -28%;
-  background: radial-gradient(circle, var(--orb-halo) 0%, var(--orb-shade) 45%, var(--color-paper) 70%);
-  opacity: 0.35;
-  transition: opacity var(--dur-short) var(--ease-out);
+.crystal:focus-visible { outline-offset: 10px; }
+.crystal-halo {
+  position: absolute;
+  inset: -34%;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, color-mix(in oklab, var(--color-teal-light) 50%, transparent) 0%, color-mix(in oklab, var(--color-gold-light) 22%, transparent) 38%, transparent 68%);
+  opacity: 0.4;
+  transition: opacity var(--dur-long) var(--ease-out);
 }
-.orb-core {
-  background: radial-gradient(circle at 38% 32%, var(--orb-core) 0%, var(--orb-mid) 34%, var(--orb-edge) 72%, var(--orb-shade) 100%);
-  transform: scale(0.82);
-  opacity: 0.8;
-  transition: transform var(--dur-short) var(--ease-out), opacity var(--dur-short) var(--ease-out);
-}
-.orb-sheen {
-  inset: 10%;
-  background: conic-gradient(from 0deg, var(--orb-core), var(--orb-edge) 30%, var(--orb-mid) 55%, var(--orb-core));
-  opacity: 0;
-  mix-blend-mode: screen;
-}
-.orb-ring { border: 2px solid var(--orb-ring); opacity: 0.14; transform: scale(0.92); }
-.orb:hover .orb-core { transform: scale(0.86); opacity: 0.9; }
-.orb:active .orb-core { transform: scale(0.78); }
-.orb:focus-visible { outline-offset: 8px; }
+.crystal-svg { position: relative; width: 100%; height: 100%; overflow: visible; }
+.s-teal-1 { stop-color: var(--color-teal-light); }
+.s-teal-2 { stop-color: var(--color-teal); }
+.s-teal-3 { stop-color: var(--color-teal-deep); }
+.s-gold-1 { stop-color: var(--color-gold-light); }
+.s-gold-2 { stop-color: var(--color-gold); }
+.s-gold-3 { stop-color: var(--color-gold-deep); }
+.layer-teal { fill: url(#cg-teal); }
+.layer-gold { fill: url(#cg-gold); opacity: 0; transition: opacity var(--dur-long) var(--ease-out); }
+/* At rest: a teal crystal with a champagne gold table. */
+.table .layer-gold { opacity: 1; }
+.layer-light { fill: var(--color-glint); }
+.layer-light .l1 { opacity: 0; }
+.layer-light .l2 { opacity: 0.07; }
+.layer-light .l3 { opacity: 0.15; }
+.layer-light .l4 { opacity: 0.27; }
+.layer-light .l5 { opacity: 0.42; }
+.edges { fill: none; stroke: var(--color-glint); stroke-width: 0.8; stroke-opacity: 0.55; stroke-linejoin: round; }
+.ring { fill: none; stroke: var(--color-teal); stroke-width: 1.2; opacity: 0.16; transform-box: fill-box; transform-origin: center; }
+.ring-2 { opacity: 0; }
+.gem, .table { transform-box: fill-box; transform-origin: center; }
+.gem { transform: scale(0.92); transition: transform var(--dur-short) var(--ease-out), opacity var(--dur-short) var(--ease-out); }
+.crystal:hover .gem { transform: scale(0.96); }
+.crystal:active .gem { transform: scale(0.88); }
 
-/* Listening: the light comes forward and breathes quickly; rings travel out. */
-body[data-state="listening"] .orb-halo { opacity: 0.8; }
-body[data-state="listening"] .orb-core { opacity: 1; animation: orb-listen var(--dur-listen) var(--ease-in-out) infinite; }
-body[data-state="listening"] .orb-ring { animation: orb-ripple calc(var(--dur-listen) * 1.6) var(--ease-out) infinite; }
-body[data-state="listening"] .orb-ring-2 { animation-delay: calc(var(--dur-listen) * 0.8); }
+/* Listening: teal comes forward, the crystal breathes, rings travel out. */
+body[data-state="listening"] .crystal-halo { opacity: 0.95; }
+body[data-state="listening"] .table .layer-gold { opacity: 0; }
+body[data-state="listening"] .gem { animation: crystal-pulse var(--dur-listen) var(--ease-in-out) infinite; }
+body[data-state="listening"] .ring { animation: crystal-ripple calc(var(--dur-listen) * 1.6) var(--ease-out) infinite; }
+body[data-state="listening"] .ring-2 { animation-delay: calc(var(--dur-listen) * 0.8); }
 
-/* Thinking: the light draws in and a sheen turns slowly. */
-body[data-state="thinking"] .orb-halo { opacity: 0.5; }
-body[data-state="thinking"] .orb-core { transform: scale(0.72); opacity: 0.85; }
-body[data-state="thinking"] .orb-sheen { opacity: 0.55; animation: orb-turn var(--dur-think) linear infinite; }
+/* Thinking: gold takes over and the facets turn. */
+body[data-state="thinking"] .crystal-halo { opacity: 0.6; }
+body[data-state="thinking"] .crown .layer-gold { opacity: 1; }
+body[data-state="thinking"] .table .layer-gold { opacity: 0; }
+body[data-state="thinking"] .gem { animation: crystal-turn var(--dur-think) linear infinite; }
+body[data-state="thinking"] .table { animation: table-turn var(--dur-think) linear infinite; }
 
-/* Speaking: a slow swell, plus a beat on every spoken word. */
-body[data-state="speaking"] .orb-halo { opacity: 0.7; }
-body[data-state="speaking"] .orb-core { opacity: 1; animation: orb-speak calc(var(--dur-listen) * 1.4) var(--ease-in-out) infinite; }
-body[data-state="speaking"] .orb.beat .orb-ring { animation: orb-beat var(--dur-beat) var(--ease-out) 1; }
+/* Speaking: teal and gold together, a slow swell, a beat on every word. */
+body[data-state="speaking"] .crystal-halo { opacity: 0.8; }
+body[data-state="speaking"] .gem { animation: crystal-speak calc(var(--dur-listen) * 1.4) var(--ease-in-out) infinite; }
+body[data-state="speaking"] .crystal.beat .ring { animation: crystal-beat var(--dur-beat) var(--ease-out) 1; }
 
-/* Not set up / signed out: the light dims. */
-body[data-state="unavailable"] .orb-core { opacity: 0.35; transform: scale(0.76); }
-body[data-state="unavailable"] .orb-halo { opacity: 0.12; }
+/* Not set up / signed out: the crystal dims. */
+body[data-state="unavailable"] .gem { opacity: 0.35; transform: scale(0.86); }
+body[data-state="unavailable"] .crystal-halo { opacity: 0.1; }
 
-@keyframes orb-listen { 0%, 100% { transform: scale(0.9); } 50% { transform: scale(1); } }
-@keyframes orb-speak { 0%, 100% { transform: scale(0.86); } 50% { transform: scale(0.95); } }
-@keyframes orb-turn { to { transform: rotate(1turn); } }
-@keyframes orb-ripple { 0% { transform: scale(0.9); opacity: 0.55; } 100% { transform: scale(1.55); opacity: 0; } }
-@keyframes orb-beat { 0% { transform: scale(0.95); opacity: 0.6; } 100% { transform: scale(1.2); opacity: 0; } }
+@keyframes crystal-pulse { 0%, 100% { transform: scale(0.93); } 50% { transform: scale(1); } }
+@keyframes crystal-speak { 0%, 100% { transform: scale(0.9); } 50% { transform: scale(0.97); } }
+@keyframes crystal-turn { from { transform: scale(0.88) rotate(0deg); } to { transform: scale(0.88) rotate(60deg); } }
+@keyframes table-turn { from { transform: rotate(0deg); } to { transform: rotate(-120deg); } }
+@keyframes crystal-ripple { 0% { transform: scale(0.95); opacity: 0.5; } 100% { transform: scale(1.4); opacity: 0; } }
+@keyframes crystal-beat { 0% { transform: scale(0.98); opacity: 0.55; } 100% { transform: scale(1.22); opacity: 0; } }
+@keyframes skeleton { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 
-/* Reduced motion: state shown by light and a still ring, never by movement. */
+/* Reduced motion: state shown by colour and a still ring, never by movement. */
 @media (prefers-reduced-motion: reduce) {
-  .orb > span, .reply { animation: none !important; transition: none !important; }
-  body[data-state="listening"] .orb-ring { opacity: 0.6; transform: scale(1.08); }
-  body[data-state="thinking"] .orb-sheen { opacity: 0.35; }
-  body[data-state="speaking"] .orb-ring { opacity: 0.35; transform: scale(1.04); }
+  .gem, .table, .ring, .skeleton, .crystal-halo, .layer-gold, .bubble { animation: none !important; transition: none !important; }
+  body[data-state="listening"] .ring { opacity: 0.55; transform: scale(1.1); }
+  body[data-state="thinking"] .gem { transform: scale(0.88); }
+  body[data-state="speaking"] .ring { opacity: 0.35; transform: scale(1.05); }
 }
 
 /* PIN sheet */
 .pin { position: fixed; inset: 0; z-index: var(--z-modal); display: grid; place-items: center; background: var(--color-paper); padding: var(--gutter); }
 .pin[hidden] { display: none; }
 .pin-box { display: grid; gap: var(--space-sm); width: min(100%, 20rem); }
-.pin-head { font-size: var(--text-display-s); }
-.pin-box input { min-height: 2.75rem; padding: 0 var(--space-sm); background: var(--color-paper-2); color: var(--color-ink); border: var(--rule-hair) solid var(--color-rule-2); border-radius: var(--radius-card); font: inherit; font-size: var(--text-lg); }
+.pin-head { font-size: var(--text-display); color: var(--color-gold); }
+.pin-box input { min-height: 2.75rem; padding: 0 var(--space-sm); background: var(--color-paper-2); color: var(--color-ink); border: var(--rule-hair) solid var(--color-rule-2); border-radius: var(--radius-row); font: inherit; font-size: var(--text-lg); }
+.pin-box input:focus-visible { outline-offset: -2px; }
+.pin-box .pill { min-height: 2.75rem; }
 .pin-error { margin: 0; color: var(--color-error); font-size: var(--text-sm); min-height: 1.4em; }
+
+/* Phones: panels fold above the conversation; the dock stays under the thumb. */
+@media (width < 60rem) {
+  .dock {
+    position: sticky;
+    bottom: 0;
+    z-index: var(--z-sticky);
+    background: color-mix(in oklab, var(--color-paper) 72%, transparent);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    border-top: var(--rule-hair) solid var(--color-rule);
+  }
+}
+
+/* Wide screens: the conversation and crystal on the left, the day on the right. */
+@media (width >= 60rem) {
+  :root { --crystal-size: 11rem; }
+  body {
+    width: min(100%, var(--container));
+    margin-inline: auto;
+    padding-inline: var(--gutter);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 23rem);
+    grid-template-areas: "bar bar" "stage rail" "dock rail" ". rail";
+    grid-template-rows: auto minmax(0, 1fr) auto minmax(var(--space-xl), 0.6fr);
+    column-gap: var(--space-xl);
+  }
+  .bar, .stage, .dock { padding-inline: 0; }
+  .rail {
+    position: sticky;
+    top: var(--space-md);
+    align-self: start;
+    max-height: calc(100dvh - var(--space-xl));
+    overflow-y: auto;
+    padding: var(--space-md) 0;
+    gap: var(--space-md);
+  }
+  .panel-summary { padding: var(--space-md) var(--space-lg) var(--space-sm); }
+  .panel-body { padding: 0 var(--space-lg) var(--space-lg); }
+  .reply { font-size: var(--text-3xl); }
+  .reply:lang(ta) { font-size: var(--text-2xl); }
+}

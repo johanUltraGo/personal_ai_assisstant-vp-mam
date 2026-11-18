@@ -1,5 +1,6 @@
 import { api, setUnauthorizedHandler } from "./api.js";
 import { sendCard, planCard } from "./cards.js";
+import { initRail, loadRail } from "./voice-rail.js";
 
 // Voice overlay: one orb, four states (idle, listening, thinking, speaking),
 // talking to the same assistant API as the full app (/api/assistant/...).
@@ -32,8 +33,30 @@ function setState(state, statusText) {
   orb.setAttribute("aria-label", state === "listening" || state === "speaking" ? "Tap to stop" : "Tap to talk");
 }
 
+// Each bubble says which language it is in: Tamil, English, or both mixed.
+function languageOf(text) {
+  const tamil = /[஀-௿]/.test(text);
+  const latin = /[A-Za-z]/.test(text);
+  if (tamil && latin) return { lang: "ta", label: "in Tamil and English" };
+  if (tamil) return { lang: "ta", label: "in Tamil" };
+  return { lang: "en", label: "in English" };
+}
+
+function setBubble(id, text) {
+  const node = $(id);
+  node.textContent = text;
+  const { lang, label } = languageOf(text);
+  if (text.trim()) node.lang = lang;
+  else node.removeAttribute("lang");
+  $(`${id}-lang`).textContent = text.trim() ? label : "";
+}
+
+function showHeard(text) {
+  setBubble("heard", text);
+}
+
 function showReply(text) {
-  $("reply").textContent = text;
+  setBubble("reply", text);
 }
 
 async function ensureConversation() {
@@ -48,7 +71,7 @@ async function ask(text, inputMode) {
   const words = text.trim();
   if (!words) return setState("idle");
   lastInputWasVoice = inputMode === "VOICE";
-  $("heard").textContent = words;
+  showHeard(words);
   $("cards").replaceChildren();
   setState("thinking");
   try {
@@ -73,6 +96,7 @@ async function ask(text, inputMode) {
     }
     if (lastInputWasVoice) speak(result.reply);
     else setState("idle");
+    loadRail(); // the assistant may have added a task or sent a message
   } catch (err) {
     showReply(err.message);
     setState(/not set up|ANTHROPIC_API_KEY/i.test(err.message) ? "unavailable" : "idle", /not set up|ANTHROPIC_API_KEY/i.test(err.message) ? "assistant not set up" : undefined);
@@ -98,8 +122,9 @@ function speak(text) {
   window.speechSynthesis.speak(utterance);
 }
 
-// Listening: browser speech recognition. Tamil recognisers also catch common
-// English words; the assistant handles mixed Tamil-English text.
+// Listening: browser speech recognition (free, built into Chrome). It listens
+// in Tamil, which also catches English words; English may come back spelled in
+// Tamil letters, and the assistant reads it back as English.
 function listen() {
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!Recognition) return;
@@ -111,7 +136,7 @@ function listen() {
   recognition.onstart = () => setState("listening");
   recognition.onresult = (event) => {
     transcript = Array.from(event.results).map((r) => r[0].transcript).join(" ");
-    $("heard").textContent = transcript;
+    showHeard(transcript);
   };
   recognition.onerror = (event) => {
     if (event.error !== "aborted" && event.error !== "no-speech") setState("idle", `didn't catch that (${event.error})`);
@@ -169,6 +194,7 @@ $("pin-form").addEventListener("submit", async (event) => {
     $("pin").hidden = true;
     $("pin-error").textContent = "";
     setState("idle");
+    loadRail();
   } catch (err) {
     $("pin-error").textContent = err.message;
   }
@@ -182,6 +208,8 @@ if (!(window.SpeechRecognition || window.webkitSpeechRecognition)) {
 } else {
   setState("idle");
 }
+initRail();
+loadRail();
 api("/api/auth/status")
   .then((s) => {
     if (s.pinRequired && !s.signedIn) {

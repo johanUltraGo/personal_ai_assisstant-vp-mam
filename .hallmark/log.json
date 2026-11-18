@@ -1,0 +1,21 @@
+[
+ {
+  "mode": "redesign",
+  "depth": "full",
+  "scope": "app",
+  "shape": "app screen",
+  "theme": "custom",
+  "axes": "light/roman-serif/chromatic-teal",
+  "nav": "top bar",
+  "signature": "faceted crystal core, teal listening, gold thinking",
+  "sections": [
+   "rail: schedule + calendar sync",
+   "rail: parents group",
+   "conversation bubbles",
+   "crystal dock"
+  ],
+  "prompt": "voice assistant screen for a vice principal",
+  "waived": [],
+  "date": "2026-11-18"
+ }
+]

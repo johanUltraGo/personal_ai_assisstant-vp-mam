@@ -1,0 +1,61 @@
+{
+ "v": 1,
+ "at": "2026-11-18T04:27:23.810Z",
+ "scope": "app",
+ "summary": {
+  "fails": 0,
+  "reflex": 0,
+  "warns": 0
+ },
+ "files": {
+  "server\\public\\voice.html": {
+   "handlers": [],
+   "links": [
+    "/"
+   ],
+   "fields": [],
+   "hooks": [],
+   "ids": [
+    "cards",
+    "heard",
+    "orb",
+    "pin",
+    "pin-error",
+    "pin-form",
+    "pin-input",
+    "reply",
+    "status",
+    "type-form",
+    "type-input",
+    "type-toggle"
+   ],
+   "scripts": [
+    "/js/voice.js"
+   ]
+  }
+ },
+ "wiring": {
+  "handlers": [],
+  "links": [
+   "/"
+  ],
+  "fields": [],
+  "hooks": [],
+  "ids": [
+   "cards",
+   "heard",
+   "orb",
+   "pin",
+   "pin-error",
+   "pin-form",
+   "pin-input",
+   "reply",
+   "status",
+   "type-form",
+   "type-input",
+   "type-toggle"
+  ]
+ },
+ "scripts": {},
+ "pages": {}
+}
