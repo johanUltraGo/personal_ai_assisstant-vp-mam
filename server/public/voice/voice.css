@@ -1,4 +1,4 @@
-/* Hallmark · shape: app screen · genre: atmospheric · theme: custom (the user's palette, by request) · redesign: full
+/* Hallmark · shape: app screen · genre: atmospheric · theme: custom (rebuilt: clean light, one blue) · redesign: full
  * idea: "a crystal lamp on the vice principal's desk, with the day laid out beside it" · vibe: "calm executive desk, lit when listening"
  * paper: #F1F5F9 platinum · accent: #0F766E moss teal for anything live, #B45309 champagne gold for titles · display: Spectral · body: Public Sans (Noto Tamil faces for Tamil)
  * nav: a top bar, wordmark and one link back to the full app · signature: the faceted crystal core that pulses teal when listening and turns gold when thinking
@@ -24,10 +24,7 @@ body {
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "bar" "rail" "stage" "dock";
   grid-template-rows: auto auto 1fr auto;
-  background:
-    radial-gradient(50rem 32rem at 30% 105%, color-mix(in oklab, var(--color-teal) 9%, transparent), transparent 70%),
-    radial-gradient(36rem 26rem at 100% 0%, color-mix(in oklab, var(--color-gold) 6%, transparent), transparent 70%),
-    var(--color-paper);
+  background: var(--color-paper);
 }
 
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -69,12 +66,7 @@ body {
   padding: 0 var(--gutter) var(--space-sm);
 }
 .panel {
-  background: var(--frost);
-  -webkit-backdrop-filter: blur(14px) saturate(1.15);
-  backdrop-filter: blur(14px) saturate(1.15);
-  border: var(--rule-hair) solid var(--color-rule-2);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card);
+  border-top: var(--rule-hair) solid var(--color-rule);
 }
 .panel-summary {
   display: flex;
@@ -101,7 +93,8 @@ body {
 .panel[open] > .panel-summary::after { transform: rotate(225deg) translate(-2px, -1px); }
 .panel-summary:hover .panel-head { color: var(--color-gold-deep); }
 .panel-head {
-  font-size: var(--text-xl);
+  font-size: var(--text-lg);
+  font-weight: 600;
   color: var(--color-gold);
   max-width: none;
   transition: color var(--dur-micro) var(--ease-out);
@@ -195,16 +188,14 @@ body {
 body[data-state="listening"] .bubble-you { border-color: var(--color-teal); }
 .bubble-reply {
   justify-self: start;
-  background: var(--frost);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  box-shadow: var(--shadow-card);
+  background: var(--color-paper-3);
+  border-color: transparent;
   border-end-start-radius: var(--space-2xs);
 }
 body[data-state="thinking"] .bubble-reply { opacity: 0.5; }
 .bubble-meta { font-size: var(--text-sm); color: var(--color-muted); }
 .bubble-you .bubble-lang { color: var(--color-teal); }
-.bubble-reply .bubble-lang { color: var(--color-gold); }
+.bubble-reply .bubble-lang { color: var(--color-ink-2); }
 .heard { margin: 0; font-size: var(--text-lg); color: var(--color-ink); overflow-wrap: break-word; min-width: 0; }
 .heard:lang(ta) { line-height: 1.75; }
 .reply {
@@ -230,7 +221,7 @@ body[data-state="thinking"] .bubble-reply { opacity: 0.5; }
   padding: var(--space-md);
 }
 .cards .card h4 { margin: 0 0 var(--space-xs); font-size: var(--text-sm); font-weight: 600; color: var(--color-ink-2); }
-.cards .message-body { white-space: pre-wrap; margin-block: var(--space-xs); padding: var(--space-2xs) 0 var(--space-2xs) var(--space-sm); border-left: 2px solid var(--color-gold); color: var(--color-ink); }
+.cards .message-body { white-space: pre-wrap; margin-block: var(--space-xs); padding: var(--space-2xs) 0 var(--space-2xs) var(--space-sm); border-left: 2px solid var(--color-accent); color: var(--color-ink); }
 .cards .button-row { display: flex; flex-wrap: wrap; gap: var(--space-xs); margin-top: var(--space-sm); }
 .cards .hint { color: var(--color-muted); font-size: var(--text-sm); }
 .cards table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
@@ -271,7 +262,7 @@ body[data-state="thinking"] .bubble-reply { opacity: 0.5; }
 }
 .status { margin: 0; font-size: var(--text-sm); color: var(--color-muted); min-height: 1.5em; text-align: center; }
 body[data-state="listening"] .status, body[data-state="speaking"] .status { color: var(--color-teal); font-weight: 500; }
-body[data-state="thinking"] .status { color: var(--color-gold); font-weight: 500; }
+body[data-state="thinking"] .status { color: var(--color-ink-2); font-weight: 500; }
 .type-form { display: flex; gap: var(--space-xs); width: min(100%, 30rem); }
 .type-form input {
   flex: 1;
@@ -317,8 +308,8 @@ body[data-state="thinking"] .status { color: var(--color-gold); font-weight: 500
 .s-teal-2 { stop-color: var(--color-teal); }
 .s-teal-3 { stop-color: var(--color-teal-deep); }
 .s-gold-1 { stop-color: var(--color-gold-light); }
-.s-gold-2 { stop-color: var(--color-gold); }
-.s-gold-3 { stop-color: var(--color-gold-deep); }
+.s-gold-2 { stop-color: var(--color-accent-light); }
+.s-gold-3 { stop-color: var(--color-accent); }
 .layer-teal { fill: url(#cg-teal); }
 .layer-gold { fill: url(#cg-gold); opacity: 0; transition: opacity var(--dur-long) var(--ease-out); }
 /* At rest: a teal crystal with a champagne gold table. */

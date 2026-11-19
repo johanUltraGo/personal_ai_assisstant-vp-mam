@@ -7,10 +7,10 @@
   <meta name="description" content="The Vice Principal's desk: today's work, answers needed, messages, reminders and the school calendar." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600&family=Spectral:wght@400;500&family=Noto+Sans+Tamil:wght@400;500&family=Noto+Serif+Tamil:wght@400;500&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Noto+Sans+Tamil:wght@400;500;600&display=swap" />
   <link rel="stylesheet" href="style.css" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <meta name="theme-color" content="#F1F5F9" />
+  <meta name="theme-color" content="#FBFBFC" />
   <link rel="icon" type="image/png" href="/icons/icon-192.png" />
   <link rel="apple-touch-icon" href="/icons/icon-192.png" />
 </head>
@@ -26,12 +26,9 @@
   </div>
 
   <div class="shell">
-    <aside class="side">
-      <div class="brand">
-        <h1>Vice Principal AI</h1>
-        <p class="subtitle">Your day, your messages, your school calendar</p>
-      </div>
-      <nav class="side-nav" aria-label="Sections">
+    <header class="topbar">
+      <a class="brand" href="#today"><h1>Vice Principal AI</h1></a>
+      <nav class="top-nav" aria-label="Sections">
         <a href="#today">Today</a>
         <a href="#messages">Messages</a>
         <a href="#tasks">Tasks</a>
@@ -40,7 +37,7 @@
         <a href="#settings">Settings</a>
       </nav>
       <a class="voice-link" href="/voice.html">Voice mode: tap and speak</a>
-    </aside>
+    </header>
 
     <main class="desk">
       <header class="desk-head">
@@ -56,7 +53,7 @@
 
       <!-- Today: talk to the assistant, the work list, what needs an answer -->
       <div class="workspace workspace-today" id="today">
-        <section id="assistant-section" class="panel panel-wide">
+        <section id="assistant-section" class="block">
           <h2>Talk to your assistant</h2>
           <p class="hint">Speak or type in Tamil, English, or both. Nothing is sent to anyone until you tap Send.</p>
           <div id="conversation" class="conversation" aria-live="polite"></div>
@@ -73,7 +70,7 @@
         </section>
 
         <div class="today-side">
-          <section id="morning-list-section" class="panel">
+          <section id="morning-list-section" class="block">
             <h2>Today’s work list <span id="confirmed-badge" class="badge" hidden>Confirmed</span></h2>
             <ul id="morning-list" class="rows"></ul>
             <div class="button-row">
@@ -83,7 +80,7 @@
             </div>
           </section>
 
-          <section id="alerts-section" class="panel">
+          <section id="alerts-section" class="block">
             <h2>Needs your answer</h2>
             <div id="alerts"></div>
           </section>
@@ -92,7 +89,7 @@
 
       <!-- Messages: compose, contacts, sent, leave notices -->
       <div class="workspace workspace-two" id="messages">
-        <section id="messages-section" class="panel">
+        <section id="messages-section" class="block">
           <h2>Messages</h2>
           <form id="compose-form">
             <label>To (type a name) <input type="text" id="compose-to" list="contact-names" required autocomplete="off" /></label>
@@ -126,7 +123,7 @@
           </details>
         </section>
 
-        <section id="leave-section" class="panel">
+        <section id="leave-section" class="block">
           <h2>Leave notice</h2>
           <p class="hint">Weekends and school holidays are left out automatically.</p>
           <form id="leave-form">
@@ -147,7 +144,7 @@
 
       <!-- Tasks: all tasks, add one, attach files -->
       <div class="workspace" id="tasks">
-        <section id="all-tasks-section" class="panel">
+        <section id="all-tasks-section" class="block">
           <div class="panel-head">
             <h2>All tasks</h2>
             <button id="refresh-all-tasks" type="button" class="secondary">Refresh</button>
@@ -161,7 +158,7 @@
         </section>
 
         <div class="workspace-two">
-          <section id="new-task-section" class="panel">
+          <section id="new-task-section" class="block">
             <h2>Add a task</h2>
             <form id="new-task-form">
               <label>Title <input type="text" id="task-title" required /></label>
@@ -176,7 +173,7 @@
             <p id="form-error" class="error"></p>
           </section>
 
-          <section id="attachment-section" class="panel">
+          <section id="attachment-section" class="block">
             <h2>Attach photos or documents</h2>
             <p class="hint">Files stay with the task. They are not shared until you prepare and send a message.</p>
             <form id="attachment-form">
@@ -194,7 +191,7 @@
 
       <!-- Reminders -->
       <div class="workspace workspace-two workspace-wide-left" id="reminders">
-        <section id="reminders-section" class="panel">
+        <section id="reminders-section" class="block">
           <div class="panel-head">
             <h2>Reminders</h2>
             <button id="refresh-reminders" type="button" class="secondary">Refresh</button>
@@ -207,7 +204,7 @@
           </div>
         </section>
 
-        <section id="new-reminder-section" class="panel">
+        <section id="new-reminder-section" class="block">
           <h2>Set a reminder</h2>
           <form id="new-reminder-form">
             <label>What to remind me <input type="text" id="reminder-label" required /></label>
@@ -226,7 +223,7 @@
 
       <!-- School calendar -->
       <div class="workspace">
-        <section id="calendar-section" class="panel">
+        <section id="calendar-section" class="block">
           <h2>School calendar</h2>
           <div class="calendar-tools">
             <form id="calendar-sync-form" class="inline-form">
@@ -242,7 +239,7 @@
 
       <!-- Settings: connections and the activity log -->
       <div class="workspace workspace-two" id="settings">
-        <section id="connections-section" class="panel">
+        <section id="connections-section" class="block">
           <h2>Connections</h2>
           <ul id="connections-list" class="rows"></ul>
           <h3>Google accounts (Gmail and Drive)</h3>
@@ -256,7 +253,7 @@
           <p id="notification-status" class="hint" aria-live="polite"></p>
         </section>
 
-        <section id="activity-section" class="panel">
+        <section id="activity-section" class="block">
           <div class="panel-head">
             <h2>Activity log</h2>
             <button id="refresh-activity" type="button" class="secondary">Refresh</button>

@@ -1,37 +1,43 @@
 :root {
   color-scheme: light;
   --space-3xs: 2px; --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px; --space-3xl: 96px; --space-4xl: 144px;
-  --text-xs: 0.75rem; --text-sm: 0.875rem; --text-md: 1rem; --text-lg: 1.125rem; --text-xl: 1.266rem; --text-2xl: 1.602rem; --text-3xl: 2.027rem;
-  --text-display-s: 1.266rem; --text-display: 1.602rem; --text-section: 1.125rem; --text-title: 1rem; --text-lead: 1rem;
+  --text-xs: 0.75rem; --text-sm: 0.875rem; --text-md: 1rem; --text-lg: 1.125rem; --text-xl: 1.375rem; --text-2xl: 1.75rem; --text-3xl: 2.25rem;
+  --text-display-s: 1.375rem; --text-display: 1.75rem; --text-section: 1.125rem; --text-title: 1rem; --text-lead: 1.0625rem;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-in: cubic-bezier(0.7, 0, 0.84, 0); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --dur-micro: 120ms; --dur-short: 220ms; --dur-long: 420ms;
-  --container: 76rem; --gutter: 32px; --gap-columns: 32px; --section-gap-s: 120px; --section-gap: 144px; --section-gap-l: 176px;
+  --dur-micro: 120ms; --dur-short: 200ms; --dur-long: 400ms;
+  --container: 72rem; --gutter: 40px; --gap-columns: 48px; --section-gap-s: 120px; --section-gap: 144px; --section-gap-l: 176px;
   --z-base: 1; --z-raised: 10; --z-dropdown: 100; --z-sticky: 200; --z-sticky-nav: 300; --z-modal: 400; --z-toast: 500; --z-tooltip: 600;
 
-  /* The user's palette: platinum ground, titanium slate structure, deep slate ink,
-     champagne gold for titles, moss teal for anything live. No pure black or white. */
-  --color-paper: #F1F5F9;          /* Platinum Gray */
-  --color-paper-2: #F7F9FB;        /* frosted panel base */
-  --color-paper-3: #E2E8F0;        /* skeletons, wells */
-  --color-ink: #1E293B;            /* Deep Slate */
-  --color-ink-2: #334155;          /* Warm Titanium Slate */
-  --color-muted: #475569;
-  --color-rule: color-mix(in oklab, #334155 20%, #F1F5F9);
-  --color-rule-2: color-mix(in oklab, #334155 42%, #F1F5F9);
-  --color-gold: #B45309;           /* Brushed Champagne Gold */
-  --color-gold-light: #E7B86A;
-  --color-gold-deep: #7C3A0A;
-  --color-teal: #0F766E;           /* Deep Moss Teal */
-  --color-teal-light: #6CC3B8;
-  --color-teal-deep: #134E4A;
-  --color-glint: #F7F9FB;
-  --color-accent: #0F766E; --color-accent-ink: #F7F9FB; --color-focus: #0F766E;
-  --color-error: #A3231A; --color-success: #0F766E;
+  /* Clean and light: near-white paper, crisp ink, one clear blue. */
+  --color-paper: oklch(98.6% 0.002 250);
+  --color-paper-2: oklch(99.4% 0.001 250);
+  --color-paper-3: oklch(95.6% 0.004 250);
+  --color-ink: oklch(21% 0.012 260);
+  --color-ink-2: oklch(34% 0.014 260);
+  --color-muted: oklch(52% 0.014 260);
+  --color-rule: oklch(91.5% 0.005 260);
+  --color-rule-2: oklch(85% 0.007 260);
+  --color-accent: oklch(52% 0.19 262);
+  --color-accent-strong: oklch(44% 0.19 262);
+  --color-accent-soft: oklch(95.5% 0.025 262);
+  --color-accent-light: oklch(78% 0.11 245);
+  --color-accent-ink: oklch(99% 0.003 262);
+  --color-focus: oklch(52% 0.19 262);
+  --color-error: oklch(52% 0.19 27); --color-success: oklch(52% 0.13 155);
 
-  --font-display: "Spectral", "Noto Serif Tamil", ui-serif, Georgia, serif;
+  /* Older names used by the voice page, mapped onto the new palette. */
+  --color-teal: var(--color-accent);
+  --color-teal-light: var(--color-accent-light);
+  --color-teal-deep: var(--color-accent-strong);
+  --color-gold: var(--color-ink);
+  --color-gold-light: oklch(90% 0.05 240);
+  --color-gold-deep: oklch(36% 0.15 262);
+  --color-glint: oklch(99.4% 0.001 250);
+
   --font-body: "Public Sans", "Noto Sans Tamil", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-body);
   --font-outlier: var(--font-body);
-  --radius-card: 14px; --radius-row: 8px; --radius-pill: 999px; --rule-hair: 1px;
-  --shadow-card: 0 1px 0 color-mix(in oklab, #F7F9FB 80%, transparent) inset, 0 18px 40px -28px color-mix(in oklab, #1E293B 45%, transparent);
-  --tracking-display: -0.01em; --display-weight: 500;
+  --radius-card: 12px; --radius-row: 8px; --radius-pill: 999px; --rule-hair: 1px;
+  --shadow-card: 0 1px 2px oklch(21% 0.012 260 / 0.04), 0 8px 24px -16px oklch(21% 0.012 260 / 0.12);
+  --tracking-display: -0.02em; --display-weight: 600;
 }
