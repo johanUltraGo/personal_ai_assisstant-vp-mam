@@ -26,25 +26,24 @@
   </div>
 
   <div class="shell">
-    <header class="topbar">
+    <aside class="side">
       <a class="brand" href="#today"><h1>Vice Principal AI</h1></a>
-      <nav class="top-nav" aria-label="Sections">
-        <a href="#today">Today</a>
-        <a href="#messages">Messages</a>
-        <a href="#tasks">Tasks</a>
-        <a href="#reminders">Reminders</a>
-        <a href="#calendar-section">Calendar</a>
-        <a href="#settings">Settings</a>
+      <nav class="main-nav" aria-label="Sections">
+        <a href="#today" data-target="today">Today</a>
+        <a href="#messages" data-target="messages">Messages</a>
+        <a href="#tasks" data-target="tasks">Tasks</a>
+        <a href="#reminders" data-target="reminders">Reminders</a>
+        <a href="#more" data-target="more"><span class="label-long">Calendar and settings</span><span class="label-short">More</span></a>
       </nav>
       <a class="voice-link" href="/voice.html">Voice mode: tap and speak</a>
-    </header>
+    </aside>
 
     <main class="desk">
-      <header class="desk-head">
+      <header class="desk-head" data-view="today">
         <p id="today-date" class="desk-date"></p>
         <h2 id="greeting" class="greeting">Welcome, Ma’am</h2>
       </header>
-      <dl class="overview" aria-label="Today at a glance">
+      <dl class="overview" data-view="today" aria-label="Today at a glance">
         <div class="stat"><dt>Tasks today</dt><dd id="ov-tasks" class="num">…</dd></div>
         <div class="stat"><dt>Needs your answer</dt><dd id="ov-answers" class="num">…</dd></div>
         <div class="stat"><dt>Reminders left today</dt><dd id="ov-reminders" class="num">…</dd></div>
@@ -52,7 +51,7 @@
       </dl>
 
       <!-- Today: talk to the assistant, the work list, what needs an answer -->
-      <div class="workspace workspace-today" id="today">
+      <div class="workspace workspace-today" id="today" data-view="today">
         <section id="assistant-section" class="block">
           <h2>Talk to your assistant</h2>
           <p class="hint">Speak or type in Tamil, English, or both. Nothing is sent to anyone until you tap Send.</p>
@@ -88,7 +87,7 @@
       </div>
 
       <!-- Messages: compose, contacts, sent, leave notices -->
-      <div class="workspace workspace-two" id="messages">
+      <div class="workspace workspace-two" id="messages" data-view="messages">
         <section id="messages-section" class="block">
           <h2>Messages</h2>
           <form id="compose-form">
@@ -143,7 +142,7 @@
       </div>
 
       <!-- Tasks: all tasks, add one, attach files -->
-      <div class="workspace" id="tasks">
+      <div class="workspace" id="tasks" data-view="tasks">
         <section id="all-tasks-section" class="block">
           <div class="panel-head">
             <h2>All tasks</h2>
@@ -190,7 +189,7 @@
       </div>
 
       <!-- Reminders -->
-      <div class="workspace workspace-two workspace-wide-left" id="reminders">
+      <div class="workspace workspace-two workspace-wide-left" id="reminders" data-view="reminders">
         <section id="reminders-section" class="block">
           <div class="panel-head">
             <h2>Reminders</h2>
@@ -222,7 +221,7 @@
       </div>
 
       <!-- School calendar -->
-      <div class="workspace">
+      <div class="workspace" id="more" data-view="more">
         <section id="calendar-section" class="block">
           <h2>School calendar</h2>
           <div class="calendar-tools">
@@ -238,7 +237,7 @@
       </div>
 
       <!-- Settings: connections and the activity log -->
-      <div class="workspace workspace-two" id="settings">
+      <div class="workspace workspace-two" id="settings" data-view="more">
         <section id="connections-section" class="block">
           <h2>Connections</h2>
           <ul id="connections-list" class="rows"></ul>
@@ -266,5 +265,6 @@
 
   <script type="module" src="js/main.js"></script>
   <script type="module" src="js/overview.js"></script>
+  <script type="module" src="js/layout.js"></script>
 </body>
 </html>

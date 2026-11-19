@@ -9,9 +9,9 @@
   --z-base: 1; --z-raised: 10; --z-dropdown: 100; --z-sticky: 200; --z-sticky-nav: 300; --z-modal: 400; --z-toast: 500; --z-tooltip: 600;
 
   /* Clean and light: near-white paper, crisp ink, one clear blue. */
-  --color-paper: oklch(98.6% 0.002 250);
-  --color-paper-2: oklch(99.4% 0.001 250);
-  --color-paper-3: oklch(95.6% 0.004 250);
+  --color-paper: oklch(97.3% 0.003 255);
+  --color-paper-2: oklch(99.8% 0.001 255);
+  --color-paper-3: oklch(95% 0.004 255);
   --color-ink: oklch(21% 0.012 260);
   --color-ink-2: oklch(34% 0.014 260);
   --color-muted: oklch(52% 0.014 260);
