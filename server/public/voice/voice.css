@@ -360,6 +360,10 @@ body[data-state="speaking"] .crystal.beat .ring { animation: crystal-beat var(--
 body[data-state="unavailable"] .gem { opacity: 0.35; transform: scale(0.86); }
 body[data-state="unavailable"] .crystal-halo { opacity: 0.1; }
 
+/* Opening the app: the crystal rises into place, like an assistant popping up. */
+.dock { animation: dock-rise var(--dur-long) var(--ease-out) both; }
+@keyframes dock-rise { from { opacity: 0; transform: translateY(24px) scale(0.96); } }
+
 @keyframes crystal-pulse { 0%, 100% { transform: scale(0.93); } 50% { transform: scale(1); } }
 @keyframes crystal-speak { 0%, 100% { transform: scale(0.9); } 50% { transform: scale(0.97); } }
 @keyframes crystal-turn { from { transform: scale(0.88) rotate(0deg); } to { transform: scale(0.88) rotate(60deg); } }

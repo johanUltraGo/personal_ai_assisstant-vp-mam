@@ -12,7 +12,8 @@ describe("installable on her phone", () => {
     const manifest = JSON.parse(res.text);
     expect(manifest.short_name).toBeTruthy();
     expect(manifest.display).toBe("standalone");
-    expect(manifest.start_url).toBe("/");
+    // Siri-style: the icon opens straight into the voice screen.
+    expect(manifest.start_url).toBe("/voice.html");
     const sizes = manifest.icons.map((i: any) => i.sizes);
     expect(sizes).toEqual(expect.arrayContaining(["192x192", "512x512"]));
     for (const icon of manifest.icons) {

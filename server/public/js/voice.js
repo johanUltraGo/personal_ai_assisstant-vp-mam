@@ -139,7 +139,9 @@ function listen() {
     showHeard(transcript);
   };
   recognition.onerror = (event) => {
-    if (event.error !== "aborted" && event.error !== "no-speech") setState("idle", `didn't catch that (${event.error})`);
+    // Opening the app can't always start the microphone by itself; then one tap does.
+    if (event.error === "not-allowed" || event.error === "service-not-allowed") setState("idle", "tap the crystal to talk");
+    else if (event.error !== "aborted" && event.error !== "no-speech") setState("idle", `didn't catch that (${event.error})`);
   };
   recognition.onend = () => {
     recognition = null;
@@ -195,6 +197,7 @@ $("pin-form").addEventListener("submit", async (event) => {
     $("pin-error").textContent = "";
     setState("idle");
     loadRail();
+    listenOnOpen();
   } catch (err) {
     $("pin-error").textContent = err.message;
   }
@@ -210,11 +213,36 @@ if (!(window.SpeechRecognition || window.webkitSpeechRecognition)) {
 }
 initRail();
 loadRail();
+
+// Siri-style: opened from the home-screen icon (installed app), it starts
+// listening straight away, and again each time she comes back to it.
+// In a normal browser tab it waits for a tap. ?listen=1 forces it (for testing).
+const openedAsApp = window.matchMedia("(display-mode: standalone)").matches || new URLSearchParams(location.search).has("listen");
+function listenOnOpen() {
+  if (!openedAsApp || document.hidden || !$("pin").hidden) return;
+  if (!(window.SpeechRecognition || window.webkitSpeechRecognition)) return;
+  if (document.body.dataset.state !== "idle") return;
+  window.speechSynthesis?.cancel();
+  listen();
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    // Leaving the app: stop listening and talking, like closing Siri.
+    recognition?.abort();
+    window.speechSynthesis?.cancel();
+    if (["listening", "speaking"].includes(document.body.dataset.state)) setState("idle");
+  } else {
+    listenOnOpen();
+  }
+});
+
 api("/api/auth/status")
   .then((s) => {
     if (s.pinRequired && !s.signedIn) {
       $("pin").hidden = false;
       $("pin-input").focus();
+    } else {
+      listenOnOpen();
     }
   })
   .catch(() => {});

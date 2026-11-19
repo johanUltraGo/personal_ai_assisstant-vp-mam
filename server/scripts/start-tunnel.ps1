@@ -30,7 +30,7 @@ try { $null = Invoke-RestMethod "http://127.0.0.1:$port/health" -TimeoutSec 3 } 
 
 $cloudflared = (Get-Command cloudflared -ErrorAction SilentlyContinue).Source
 if (-not $cloudflared) {
-  foreach ($p in "$env:ProgramFiles\cloudflared\cloudflared.exe", "${env:ProgramFiles(x86)}\cloudflared\cloudflared.exe") {
+  foreach ($p in "$env:ProgramFiles\cloudflared\cloudflared.exe", "${env:ProgramFiles(x86)}\cloudflared\cloudflared.exe", "$env:LOCALAPPDATA\cloudflared\cloudflared.exe") {
     if (Test-Path $p) { $cloudflared = $p }
   }
 }
