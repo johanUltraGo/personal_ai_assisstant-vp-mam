@@ -89,14 +89,27 @@ export class SupabaseStore implements FileStore {
     return this.bucketReady;
   }
 
-  async put(name: string, content: Buffer, contentType: string) {
+  async put(name: string, content: Buffer, contentType: string, options: { overwrite?: boolean } = {}) {
     await this.ensureBucket();
     const res = await this.fetchImpl(this.objectUrl(name), {
       method: "POST",
-      headers: this.headers({ "Content-Type": contentType || "application/octet-stream", "x-upsert": "false" }),
+      headers: this.headers({ "Content-Type": contentType || "application/octet-stream", "x-upsert": options.overwrite ? "true" : "false" }),
       body: new Uint8Array(content),
     });
     if (!res.ok) throw await this.failure(res, "save");
+  }
+
+  /** Names of the objects at the top of the bucket (used for backup retention). */
+  async list(): Promise<string[]> {
+    await this.ensureBucket();
+    const res = await this.fetchImpl(`${this.baseUrl}/storage/v1/object/list/${encodeURIComponent(this.bucket)}`, {
+      method: "POST",
+      headers: this.headers({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ prefix: "", limit: 1000, offset: 0, sortBy: { column: "name", order: "asc" } }),
+    });
+    if (!res.ok) throw await this.failure(res, "list");
+    const items = (await res.json()) as { name: string }[];
+    return items.map((i) => i.name);
   }
 
   async get(name: string) {
@@ -116,6 +129,13 @@ export class SupabaseStore implements FileStore {
     const res = await this.fetchImpl(this.objectUrl(name), { method: "DELETE", headers: this.headers() });
     if (!res.ok && res.status !== 404) throw await this.failure(res, "delete");
   }
+}
+
+/** A private Supabase bucket for daily backups, when Supabase is configured. */
+export function backupCloudStore(): SupabaseStore | null {
+  const url = process.env.SUPABASE_URL?.trim();
+  const key = process.env.SUPABASE_SECRET_KEY?.trim();
+  return url && key ? new SupabaseStore(url, key, "backups") : null;
 }
 
 let store: FileStore | null = null;

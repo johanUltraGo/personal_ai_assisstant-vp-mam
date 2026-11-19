@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { schoolTimezone } from "./morningListService";
 import { logActivity } from "./activityService";
+import { backupCloudStore } from "./fileStorage";
 
 const FILE_PATTERN = /^vp-(\d{4}-\d{2}-\d{2})\.(json|db)$/;
 
@@ -69,7 +70,8 @@ export async function backupDatabase(now: Date = new Date()) {
     { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 120_000, maxWait: 30_000 }
   );
   const rows = Object.values(tables).reduce((n, list) => n + list.length, 0);
-  await fs.writeFile(temp, JSON.stringify({ format: "vp-backup", version: 1, createdAt: now.toISOString(), tables }));
+  const content = JSON.stringify({ format: "vp-backup", version: 1, createdAt: now.toISOString(), tables });
+  await fs.writeFile(temp, content);
   await fs.rm(file, { force: true });
   await fs.rename(temp, file);
 
@@ -82,8 +84,24 @@ export async function backupDatabase(now: Date = new Date()) {
       removed.push(name);
     }
   }
-  await logActivity("backup.created", `Saved a backup copy of your data (${path.basename(file)}, ${rows} records).`);
-  return { file, rows, removed };
+
+  // In the cloud the server's disk is temporary, so the copy that counts is
+  // the one in the private Supabase "backups" bucket (same name, same keep period).
+  const cloud = backupCloudStore();
+  let inCloud = false;
+  if (cloud) {
+    await cloud.put(path.basename(file), Buffer.from(content), "application/json", { overwrite: true });
+    inCloud = true;
+    for (const name of await cloud.list()) {
+      const match = name.match(FILE_PATTERN);
+      if (match && match[1] < cutoff) await cloud.remove(name);
+    }
+  }
+  await logActivity(
+    "backup.created",
+    `Saved a backup copy of your data (${path.basename(file)}, ${rows} records${inCloud ? ", also in Supabase" : ""}).`
+  );
+  return { file, rows, removed, inCloud };
 }
 
 /**

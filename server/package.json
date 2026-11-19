@@ -18,7 +18,9 @@
     "service:uninstall": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/uninstall-service.ps1",
     "eval": "ts-node scripts/run-eval.ts",
     "tunnel": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-tunnel.ps1",
-    "restore": "ts-node scripts/restore-backup.ts"
+    "restore": "ts-node scripts/restore-backup.ts",
+    "render-build": "npm ci --include=dev && npx prisma generate && npm run build",
+    "render-start": "npx prisma migrate deploy && node dist/index.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.7.0",
