@@ -14,6 +14,9 @@ export default defineConfig({
       // Attachments in tests go to a temp folder, never to Supabase Storage.
       SUPABASE_URL: "",
       SUPABASE_SECRET_KEY: "",
+      // …and never with the real Google robot account.
+      GOOGLE_SERVICE_ACCOUNT_KEY_FILE: "",
+      GOOGLE_SERVICE_ACCOUNT_JSON: "",
       ATTACHMENT_STORAGE_PATH: path.join(os.tmpdir(), "vp-test-uploads"),
       BACKUP_DIR: path.join(os.tmpdir(), "vp-test-backups"),
       // The live access settings in .env (her PIN, secure cookies for the

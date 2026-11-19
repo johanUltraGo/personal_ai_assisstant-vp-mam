@@ -1,4 +1,5 @@
 import { DateTime } from "luxon";
+import { isMonthGridWorkbook, parseMonthGridWorkbook } from "./monthGridCalendar";
 import { prisma } from "../db";
 import { schoolTimezone } from "./morningListService";
 import { DriveConnector, driveFileIdFrom } from "../connectors/driveConnector";
@@ -80,6 +81,8 @@ export interface ImportedCalendarEvent extends SeedEventInput {}
  */
 export function parseCalendarFile(content: string): ImportedCalendarEvent[] {
   const trimmed = content.replace(/^\uFEFF/, "").trim();
+  // The school's Excel month-grid calendar (one sheet per wing).
+  if (isMonthGridWorkbook(trimmed)) return parseMonthGridWorkbook(trimmed).map(normaliseEvent);
   const firstLine = trimmed.split(/\r?\n/, 1)[0].toLowerCase();
   if (!trimmed.startsWith("[") && !/BEGIN:VCALENDAR/i.test(trimmed) && firstLine.includes("date") && firstLine.includes(",")) {
     return parseCsvCalendar(trimmed);
@@ -183,7 +186,7 @@ export async function importCalendar(content: string) {
 export async function syncCalendarFromDrive(connector: DriveConnector, fileId: string) {
   const file = await connector.readFile(fileId);
   if (file.kind !== "text" || !file.text) {
-    throw new Error(`"${file.name}" is not a calendar file I can read (.ics, JSON, CSV or Google Sheet).`);
+    throw new Error(`"${file.name}" is not a calendar file I can read (.ics, JSON, CSV, Google Sheet or the Excel month calendar).`);
   }
   const events = parseCalendarFile(file.text);
   const created = await storeEvents(events);

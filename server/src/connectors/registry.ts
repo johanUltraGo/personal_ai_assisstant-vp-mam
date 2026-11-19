@@ -3,6 +3,7 @@ import { GmailApiClient, GmailConnector, gmailFromEnvironment } from "./gmailCon
 import { DriveClient, DriveConnector, DriveFile, GoogleDriveApiClient, driveFromEnvironment } from "./driveConnector";
 import { whatsappFromEnvironment } from "./whatsappConnector";
 import { accessTokenFor } from "../google/accounts";
+import { serviceAccountAccessToken, serviceAccountKey } from "../google/serviceAccount";
 import { MessagingConnectors } from "../services/messagingService";
 
 /** Gmail sends from the default connected Google account; the legacy
@@ -31,11 +32,23 @@ class MultiAccountDriveClient implements DriveClient {
   }
 }
 
+/** Drive readers: the service account first (files shared with its email,
+ * e.g. the school calendar), then each connected Google account. */
 export async function driveConnector(): Promise<DriveConnector> {
   const accounts = await prisma.googleAccount.findMany({ orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }] });
-  if (!accounts.length) return driveFromEnvironment();
-  const clients = accounts.map((a) => new GoogleDriveApiClient(() => accessTokenFor(a.id)));
-  return new DriveConnector(accounts.map((a) => a.email).join(", "), new MultiAccountDriveClient(clients));
+  const robot = serviceAccountKey();
+  if (!accounts.length && !robot) return driveFromEnvironment();
+  const clients: DriveClient[] = [];
+  const names: string[] = [];
+  if (robot) {
+    clients.push(new GoogleDriveApiClient(() => serviceAccountAccessToken(robot)));
+    names.push(robot.client_email);
+  }
+  for (const a of accounts) {
+    clients.push(new GoogleDriveApiClient(() => accessTokenFor(a.id)));
+    names.push(a.email);
+  }
+  return new DriveConnector(names.join(", "), new MultiAccountDriveClient(clients));
 }
 
 export async function messagingConnectors(): Promise<MessagingConnectors> {

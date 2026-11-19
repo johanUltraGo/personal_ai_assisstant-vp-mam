@@ -1,5 +1,6 @@
 import { Connector, ConnectorHealth, ConnectorNotConfiguredError } from "./connector";
 import { BadRequestError } from "../http/errors";
+import { workbookToText, XLSX_MIME } from "../services/excelText";
 
 /**
  * A Drive file read in full (spec §5: "reads a whole Drive file first").
@@ -55,6 +56,16 @@ export class GoogleDriveApiClient implements DriveClient {
     if (!metadataResponse.ok) throw new Error(`Drive could not find that file (${metadataResponse.status}).`);
     const meta = (await metadataResponse.json()) as { name: string; mimeType: string; size?: string };
 
+    // Excel files uploaded to Drive (not Google Sheets): download and turn into text.
+    if (meta.mimeType === XLSX_MIME) {
+      if (Number(meta.size ?? 0) > MAX_BINARY_BYTES) throw new BadRequestError(`"${meta.name}" is too large to read whole (over 10 MB).`);
+      const response = await fetch(`${base}?alt=media&supportsAllDrives=true`, { headers });
+      if (!response.ok) throw new Error(`Drive could not download "${meta.name}" (${response.status}).`);
+      const text = await workbookToText(Buffer.from(await response.arrayBuffer()));
+      if (text.length > MAX_TEXT_CHARS) throw new BadRequestError(`"${meta.name}" is too large to read whole.`);
+      return { name: meta.name, mimeType: "text/tab-separated-values", kind: "text", text };
+    }
+
     const exportType = GOOGLE_EXPORTS[meta.mimeType];
     const kind: DriveFile["kind"] | undefined = exportType || isTextType(meta.mimeType)
       ? "text"
@@ -63,7 +74,7 @@ export class GoogleDriveApiClient implements DriveClient {
         : IMAGE_TYPES.includes(meta.mimeType)
           ? "image"
           : undefined;
-    if (!kind) throw new BadRequestError(`I can't read "${meta.name}" (${meta.mimeType}) yet. Docs, Sheets, Slides, text, PDF and photos work.`);
+    if (!kind) throw new BadRequestError(`I can't read "${meta.name}" (${meta.mimeType}) yet. Docs, Sheets, Excel, Slides, text, PDF and photos work.`);
     if (kind !== "text" && Number(meta.size ?? 0) > MAX_BINARY_BYTES) {
       throw new BadRequestError(`"${meta.name}" is too large to read whole (over 10 MB).`);
     }

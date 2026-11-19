@@ -13,3 +13,6 @@ prisma/e2e.db-journal
 uploads/
 backups/
 logs/
+
+# Google service account key (secret)
+google-service-account*.json
