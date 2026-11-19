@@ -43,6 +43,17 @@
     </aside>
 
     <main class="desk">
+      <header class="desk-head">
+        <p id="today-date" class="desk-date"></p>
+        <h2 id="greeting" class="greeting">Welcome, Ma’am</h2>
+      </header>
+      <dl class="overview" aria-label="Today at a glance">
+        <div class="stat"><dt>Tasks today</dt><dd id="ov-tasks" class="num">…</dd></div>
+        <div class="stat"><dt>Needs your answer</dt><dd id="ov-answers" class="num">…</dd></div>
+        <div class="stat"><dt>Reminders left today</dt><dd id="ov-reminders" class="num">…</dd></div>
+        <div class="stat stat-wide"><dt>Next school event</dt><dd id="ov-next">…</dd></div>
+      </dl>
+
       <!-- Today: talk to the assistant, the work list, what needs an answer -->
       <div class="workspace workspace-today" id="today">
         <section id="assistant-section" class="panel panel-wide">
@@ -66,8 +77,8 @@
             <h2>Today’s work list <span id="confirmed-badge" class="badge" hidden>Confirmed</span></h2>
             <ul id="morning-list" class="rows"></ul>
             <div class="button-row">
-              <button id="confirm-list" type="button">Looks good</button>
-              <button id="change-list" type="button">Change…</button>
+              <button id="confirm-list" type="button">Confirm list</button>
+              <button id="change-list" type="button">Request changes</button>
               <button id="refresh-morning-list" type="button" class="secondary">Refresh</button>
             </div>
           </section>
@@ -247,7 +258,7 @@
 
         <section id="activity-section" class="panel">
           <div class="panel-head">
-            <h2>What I’ve been doing</h2>
+            <h2>Activity log</h2>
             <button id="refresh-activity" type="button" class="secondary">Refresh</button>
           </div>
           <ul id="activity-list" class="rows"></ul>
@@ -257,5 +268,6 @@
   </div>
 
   <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/overview.js"></script>
 </body>
 </html>
