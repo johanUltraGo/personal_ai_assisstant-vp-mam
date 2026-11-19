@@ -1,11 +1,10 @@
 import { randomUUID } from "crypto";
-import { promises as fs, createReadStream } from "fs";
 import path from "path";
 import { prisma } from "../db";
 import { BadRequestError, NotFoundError } from "../http/errors";
 import { driveFileIdFrom } from "../connectors/driveConnector";
+import { fileStore } from "./fileStorage";
 
-const uploadRoot = path.resolve(process.env.ATTACHMENT_STORAGE_PATH || path.join(process.cwd(), "uploads"));
 const maxUploadBytes = 10 * 1024 * 1024;
 
 /** Spec §4: photos and documents go to the chosen task straight away. */
@@ -17,14 +16,14 @@ export async function saveTaskAttachment(input: { taskId: string; originalName: 
   // Keep letters in any script (Tamil names stay readable); drop anything else.
   const safeName = path.basename(input.originalName).replace(/[^\p{L}\p{M}\p{N}._-]/gu, "_") || "attachment";
   const storedName = `${randomUUID()}-${safeName.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-  await fs.mkdir(uploadRoot, { recursive: true });
-  await fs.writeFile(path.join(uploadRoot, storedName), input.content, { flag: "wx" });
+  const mimeType = input.mimeType || "application/octet-stream";
+  await fileStore().put(storedName, input.content, mimeType);
   try {
     return await prisma.attachment.create({
-      data: { taskId: input.taskId, originalName: safeName, storedName, mimeType: input.mimeType || "application/octet-stream", size: input.content.length },
+      data: { taskId: input.taskId, originalName: safeName, storedName, mimeType, size: input.content.length },
     });
   } catch (error) {
-    await fs.unlink(path.join(uploadRoot, storedName)).catch(() => {});
+    await fileStore().remove(storedName).catch(() => {});
     throw error;
   }
 }
@@ -46,9 +45,5 @@ export function listTaskAttachments(taskId: string) {
 export async function openAttachment(id: string) {
   const attachment = await prisma.attachment.findUnique({ where: { id } });
   if (!attachment || !attachment.storedName) throw new NotFoundError("That attachment has no stored file.");
-  const filePath = path.join(uploadRoot, attachment.storedName);
-  await fs.access(filePath).catch(() => {
-    throw new NotFoundError("The attached file is missing from storage.");
-  });
-  return { attachment, stream: createReadStream(filePath) };
+  return { attachment, stream: await fileStore().get(attachment.storedName) };
 }

@@ -1,6 +1,6 @@
 # Vice Principal AI — server
 
-Node + TypeScript + Express 5 + Prisma (SQLite). Serves the API and the web page in `public/`.
+Node + TypeScript + Express 5 + Prisma. Data in **Supabase** (Postgres), attached files in Supabase Storage. Serves the API and the web page in `public/`.
 Design: `docs/superpowers/specs/2026-11-10-assistant-completion-design.md`. Status: `planning.md`.
 
 ## Run it
@@ -9,9 +9,9 @@ Design: `docs/superpowers/specs/2026-11-10-assistant-completion-design.md`. Stat
 cd server
 npm install
 cp .env.example .env          # ONLY if .env does not exist yet - never over an existing one
-npx prisma migrate deploy     # creates prisma/dev.db
+npx prisma migrate deploy     # creates the tables in Supabase (DATABASE_URL)
 npm run dev                   # http://localhost:4000 (stops when you close the window)
-npm test                      # 141 tests on a separate test.db, no network or keys needed
+npm test                      # tests in a separate vp_test schema of the same Supabase database
 npm run typecheck
 ```
 
@@ -66,7 +66,9 @@ Everything works without any keys except: the assistant (needs `ANTHROPIC_API_KE
 
 **6. WhatsApp.** Works without setup: after *Send*, WhatsApp opens with the message typed and she taps send (for groups she picks the group). Optional Meta Business Cloud API (`WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`) sends automatically to individuals — but only free text within 24 hours of their last message; otherwise the app offers the hand-off link.
 
-**7. Backups.** Every day at 02:00 the server saves a consistent copy of the database as `backups/vp-YYYY-MM-DD.db` (change the folder with `BACKUP_DIR`, how many days to keep with `BACKUP_KEEP_DAYS`, default 14). Point `BACKUP_DIR` at another disk or a synced folder (e.g. Google Drive for desktop). To restore: stop the server, copy a backup over `prisma/dev.db`, start again.
+**7. Backups.** Supabase's free plan keeps no backups, so every day at 02:00 the server saves all her data as `backups/vp-YYYY-MM-DD.json` (change the folder with `BACKUP_DIR`, how many days to keep with `BACKUP_KEEP_DAYS`, default 14). Point `BACKUP_DIR` at another disk or a synced folder (e.g. Google Drive for desktop). Attached files in Supabase Storage are not in this file. To restore: `npm run service:stop`, `npm run restore -- backups/vp-YYYY-MM-DD.json` (replaces everything), then `npm run service:restart`.
+
+**Supabase setup.** Create a free project at supabase.com (region: Mumbai). Connect → Session pooler string → `DATABASE_URL`; project URL → `SUPABASE_URL`; Settings → API Keys → secret key → `SUPABASE_SECRET_KEY`. Then `npx prisma migrate deploy` and `npm run service:restart`. A free project pauses after 7 days without database activity; the server checks reminders every minute, so it stays awake while the computer is on.
 
 **8. Privacy: old chats.** Set `CONVERSATION_RETENTION_DAYS` (e.g. `30`) to delete assistant chats idle that long, every night at 02:00. Empty keeps them. Tasks, reminders and the sent-message record are never deleted.
 

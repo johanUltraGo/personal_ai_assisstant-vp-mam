@@ -4,25 +4,23 @@
 // planning.md §9 — they are not pre-created here to avoid building
 // unused structure ahead of the requirement that needs it.
 //
-// Dev datasource is local SQLite (no Postgres/Docker available in this
-// environment). To move to Supabase: change provider to "postgresql",
-// set DATABASE_URL to the Supabase connection string, then run
-// `npm run prisma:migrate`. See planning.md §5 ("Hosting location" — ❓).
+// Data lives in Supabase (Postgres). DATABASE_URL is the Session pooler
+// connection string from Supabase's Connect dialog (port 5432, works over
+// IPv4). The earlier SQLite migrations are kept in prisma/migrations-sqlite
+// for history only; prisma/migrations holds the Postgres ones.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// SQLite (the local dev datasource) has no native enum support in Prisma,
-// so status/source fields are plain strings, validated against the TS
-// union types in src/domain/types.ts at the application layer. If/when
-// this moves to Supabase/Postgres, these can optionally become real
-// Prisma enums without changing any application code.
+// Status/source fields are plain strings (a leftover from SQLite, which had
+// no enums), validated against the TS union types in src/domain/types.ts.
+// They could become real Postgres enums later without changing app code.
 
 model Task {
   id              String   @id @default(cuid())

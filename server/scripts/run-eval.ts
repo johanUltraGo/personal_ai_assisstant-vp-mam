@@ -1,6 +1,6 @@
 /**
  * Runs evals/assistant-cases.json against the real assistant (Claude) on a
- * throwaway database (prisma/eval.db), then reports which cases passed.
+ * throwaway schema (vp_eval) in the same Supabase database, then reports which cases passed.
  *   npm run eval            all cases
  *   npm run eval -- ta-     only cases whose id starts with "ta-"
  * Needs ANTHROPIC_API_KEY. Costs a few cents per full run.
@@ -8,8 +8,11 @@
 import { execSync } from "child_process";
 import path from "path";
 import { readFileSync } from "fs";
+import { isolatedDatabaseUrl } from "../tests/testDatabaseUrl";
 
-process.env.DATABASE_URL = "file:./eval.db";
+process.env.DATABASE_URL = isolatedDatabaseUrl("vp_eval");
+process.env.SUPABASE_URL = "";
+process.env.SUPABASE_SECRET_KEY = "";
 process.env.ATTACHMENT_STORAGE_PATH = path.join(require("os").tmpdir(), "vp-eval-uploads");
 
 interface InputCheck { localHour?: number; dayOffset?: number; field?: string; pattern?: string }
@@ -20,7 +23,6 @@ interface Case {
 
 async function main() {
   require("dotenv").config({ path: path.join(__dirname, "..", ".env"), override: false });
-  process.env.DATABASE_URL = "file:./eval.db";
   if (!process.env.ANTHROPIC_API_KEY && !process.env.ANTHROPIC_AUTH_TOKEN) {
     console.log("ANTHROPIC_API_KEY is not set in server/.env — add it, then run: npm run eval");
     process.exit(2);
