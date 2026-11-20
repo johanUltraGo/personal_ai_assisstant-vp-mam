@@ -1,0 +1,38 @@
+# Render Blueprint: New > Blueprint > pick this repo. Secrets (sync: false) are typed in once on Render.
+services:
+  - type: web
+    name: vp-assistant
+    runtime: node
+    region: singapore
+    plan: free
+    rootDir: server
+    buildCommand: npm run render-build
+    startCommand: npm run render-start
+    healthCheckPath: /manifest.webmanifest
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: HOST
+        value: 0.0.0.0
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: TRUST_PROXY
+        value: "true"
+      - key: SCHOOL_TIMEZONE
+        value: Asia/Kolkata
+      - { key: DATABASE_URL, sync: false }
+      - { key: APP_ACCESS_PIN, sync: false }
+      - { key: PUBLIC_ORIGIN, sync: false }
+      - { key: ANTHROPIC_API_KEY, sync: false }
+      - { key: ANTHROPIC_MODEL, sync: false }
+      - { key: GOOGLE_OAUTH_CLIENT_ID, sync: false }
+      - { key: GOOGLE_OAUTH_CLIENT_SECRET, sync: false }
+      - { key: GOOGLE_OAUTH_REDIRECT_URI, sync: false }
+      - { key: TOKEN_ENCRYPTION_KEY, sync: false }
+      - { key: SCHOOL_CALENDAR_FILE_ID, sync: false }
+      - { key: VAPID_PUBLIC_KEY, sync: false }
+      - { key: VAPID_PRIVATE_KEY, sync: false }
+      - { key: VAPID_SUBJECT, sync: false }
+      - { key: SUPABASE_URL, sync: false }
+      - { key: SUPABASE_SECRET_KEY, sync: false }
+      - { key: GOOGLE_SERVICE_ACCOUNT_JSON, sync: false }
