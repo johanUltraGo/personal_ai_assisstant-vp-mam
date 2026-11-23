@@ -3,6 +3,8 @@ import { schoolTimezone } from "../services/morningListService";
 import { raiseDuePrompts, syncConfiguredCalendar } from "../services/calendarService";
 import { notifierFromEnvironment } from "../notifiers/notifier";
 import { backupDatabase } from "../services/backupService";
+import { warnIfCalendarEnding } from "../services/calendarExpiryService";
+import { gmailConnector } from "../connectors/registry";
 import { deleteOldConversations } from "../services/retentionService";
 
 async function syncCalendar() {
@@ -20,6 +22,15 @@ async function eventAlerts() {
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error("[calendar] alerts failed:", err);
+  }
+}
+
+async function calendarExpiry() {
+  try {
+    await warnIfCalendarEnding(await gmailConnector(), await notifierFromEnvironment());
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error("[calendar] expiry check failed:", (err as Error).message);
   }
 }
 
@@ -49,6 +60,7 @@ export function start(): ScheduledTask[] {
   return [
     cron.schedule("55 8 * * *", () => void syncCalendar(), { timezone }),
     cron.schedule("1 9 * * *", () => void eventAlerts(), { timezone }),
+    cron.schedule("5 9 * * *", () => void calendarExpiry(), { timezone }),
     cron.schedule("0 2 * * *", () => void backup(), { timezone }),
   ];
 }
