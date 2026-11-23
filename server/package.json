@@ -19,6 +19,7 @@
     "eval": "ts-node scripts/run-eval.ts",
     "tunnel": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-tunnel.ps1",
     "restore": "ts-node scripts/restore-backup.ts",
+    "calendar:replace": "ts-node scripts/replace-calendar.ts",
     "render-build": "npm ci --include=dev && npx prisma generate && npm run build",
     "render-start": "npx prisma migrate deploy && node dist/index.js"
   },
