@@ -157,33 +157,85 @@ $("listen-lang")?.addEventListener("click", () => {
   showListenLang();
 });
 showListenLang();
+// She may pause to think mid-sentence: keep listening until this much silence
+// (or a tap on the crystal), and restart the browser's recogniser if it gives
+// up early (Android Chrome ends a session on short pauses).
+const SILENCE_MS = 4000;
+const MAX_LISTEN_MS = 90_000;
+let finishListening = null;
+
 function listen() {
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!Recognition) return;
-  recognition = new Recognition();
-  recognition.lang = listenLang();
-  recognition.interimResults = true;
-  recognition.continuous = false;
-  let transcript = "";
-  recognition.onstart = () => setState("listening");
-  recognition.onresult = (event) => {
-    transcript = Array.from(event.results).map((r) => r[0].transcript).join(" ");
-    // Tamil mode: convert once, when she has finished speaking.
-    if (!/[஀-௿]/.test(transcript)) showHeard(transcript);
-    else { $("heard").textContent = "…"; $("heard-lang").textContent = ""; }
-  };
-  recognition.onerror = (event) => {
-    // Opening the app can't always start the microphone by itself; then one tap does.
-    if (event.error === "not-allowed" || event.error === "service-not-allowed") setState("idle", "tap the crystal to talk");
-    else if (event.error !== "aborted" && event.error !== "no-speech") setState("idle", `didn't catch that (${event.error})`);
-  };
-  recognition.onend = () => {
+  let earlier = ""; // words from recogniser runs that already ended
+  let current = "";
+  let finished = false;
+  let silenceTimer = null;
+  const startedAt = Date.now();
+  const transcript = () => `${earlier} ${current}`.replace(/\s+/g, " ").trim();
+
+  const finish = () => {
+    if (finished || finishListening !== finish) return;
+    finished = true;
+    clearTimeout(silenceTimer);
+    finishListening = null;
+    const engine = recognition;
     recognition = null;
-    if (transcript.trim()) ask(transcript, "VOICE");
+    try { engine?.stop(); } catch {}
+    const words = transcript();
+    if (words) ask(words, "VOICE");
     else if (document.body.dataset.state === "listening") setState("idle", "didn't hear anything, tap to try again");
   };
+  finishListening = finish;
+  const armSilence = () => {
+    clearTimeout(silenceTimer);
+    silenceTimer = setTimeout(finish, SILENCE_MS);
+  };
+
+  const startEngine = () => {
+    const engine = new Recognition();
+    recognition = engine;
+    engine.lang = listenLang();
+    engine.interimResults = true;
+    engine.continuous = true;
+    engine.onstart = () => setState("listening");
+    engine.onresult = (event) => {
+      current = Array.from(event.results).map((r) => r[0].transcript).join(" ");
+      const words = transcript();
+      // Tamil mode: convert once, when she has finished speaking.
+      if (!/[஀-௿]/.test(words)) showHeard(words);
+      else { $("heard").textContent = "…"; $("heard-lang").textContent = ""; }
+      armSilence();
+    };
+    engine.onerror = (event) => {
+      // Opening the app can't always start the microphone by itself; then one tap does.
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        finished = true;
+        clearTimeout(silenceTimer);
+        setState("idle", "tap the crystal to talk");
+      } else if (event.error !== "aborted" && event.error !== "no-speech") {
+        finished = true;
+        clearTimeout(silenceTimer);
+        setState("idle", `didn't catch that (${event.error})`);
+      }
+    };
+    engine.onend = () => {
+      if (finished || recognition !== engine) return;
+      earlier = transcript();
+      current = "";
+      // The browser stopped on a pause: carry on listening within the same turn.
+      if (Date.now() - startedAt < MAX_LISTEN_MS) {
+        try { startEngine(); return; } catch {}
+      }
+      finish();
+    };
+    engine.start();
+  };
+
   try {
-    recognition.start();
+    startEngine();
+    clearTimeout(silenceTimer);
+    silenceTimer = setTimeout(finish, 8000); // a little longer to start talking
   } catch {
     setState("idle");
   }
@@ -195,7 +247,7 @@ orb.addEventListener("click", () => {
     window.speechSynthesis.cancel();
     return setState("idle");
   }
-  if (state === "listening") return recognition?.stop();
+  if (state === "listening") return finishListening ? finishListening() : recognition?.stop();
   if (state === "thinking") return;
   window.speechSynthesis?.cancel();
   listen();
@@ -262,7 +314,10 @@ function listenOnOpen() {
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     // Leaving the app: stop listening and talking, like closing Siri.
-    recognition?.abort();
+    const engine = recognition;
+    recognition = null; // so its end does not restart listening
+    finishListening = null;
+    engine?.abort();
     window.speechSynthesis?.cancel();
     if (["listening", "speaking"].includes(document.body.dataset.state)) setState("idle");
   } else {
