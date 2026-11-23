@@ -54,7 +54,7 @@ export async function loadAlerts() {
 
 function eventNoticeForm(event, draft, area) {
   const picker = contactPicker("parents");
-  const channel = el("select", {}, el("option", { value: "EMAIL" }, "Email"), el("option", { value: "WHATSAPP" }, "WhatsApp"));
+  const channel = el("select", {}, el("option", { value: "EMAIL" }, "Email"), el("option", { value: "WHATSAPP" }, "WhatsApp"), el("option", { value: "SMS" }, "SMS"));
   const subject = el("input", { type: "text", value: draft.subject });
   const body = el("textarea", { rows: "6" });
   body.value = draft.body;

@@ -16,8 +16,17 @@ export interface DriveFile {
 }
 
 /** Thin seam over the Google Drive API so tests need no network. */
+export interface DriveSearchHit {
+  id: string;
+  name: string;
+  mimeType: string;
+  modifiedTime?: string;
+  link?: string;
+}
+
 export interface DriveClient {
   readFile(fileId: string): Promise<DriveFile>;
+  search?(query: string, limit: number): Promise<DriveSearchHit[]>;
 }
 
 export const MAX_BINARY_BYTES = 10 * 1024 * 1024;
@@ -47,6 +56,24 @@ export function driveFileIdFrom(urlOrId: string): string {
 
 export class GoogleDriveApiClient implements DriveClient {
   constructor(private readonly accessToken: string | (() => Promise<string>)) {}
+
+  async search(query: string, limit: number): Promise<DriveSearchHit[]> {
+    const token = typeof this.accessToken === "string" ? this.accessToken : await this.accessToken();
+    const safe = query.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+    const params = new URLSearchParams({
+      q: `(name contains '${safe}' or fullText contains '${safe}') and trashed = false`,
+      fields: "files(id,name,mimeType,modifiedTime,webViewLink)",
+      pageSize: String(limit),
+      orderBy: "modifiedTime desc",
+      supportsAllDrives: "true",
+      includeItemsFromAllDrives: "true",
+      corpora: "allDrives",
+    });
+    const response = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) throw new Error(`Drive search failed (${response.status}).`);
+    const data = (await response.json()) as { files?: Array<{ id: string; name: string; mimeType: string; modifiedTime?: string; webViewLink?: string }> };
+    return (data.files ?? []).map((f) => ({ id: f.id, name: f.name, mimeType: f.mimeType, modifiedTime: f.modifiedTime, link: f.webViewLink }));
+  }
 
   async readFile(fileId: string): Promise<DriveFile> {
     const token = typeof this.accessToken === "string" ? this.accessToken : await this.accessToken();
@@ -116,6 +143,13 @@ export class DriveConnector implements Connector {
       throw new ConnectorNotConfiguredError("Drive is not connected yet. Connect a Google account on the Connections screen.");
     }
     return this.client.readFile(fileId);
+  }
+
+  async search(query: string, limit = 10): Promise<DriveSearchHit[]> {
+    if (!this.client?.search) {
+      throw new ConnectorNotConfiguredError("Drive is not connected yet. Connect a Google account on the Connections screen.");
+    }
+    return this.client.search(query, limit);
   }
 }
 

@@ -113,7 +113,7 @@ export function initMessages() {
         },
       });
       const picker = contactPicker(audience === "TEACHER" ? "teacher" : "");
-      const channel = el("select", {}, el("option", { value: "WHATSAPP" }, "WhatsApp"), el("option", { value: "EMAIL" }, "Email"));
+      const channel = el("select", {}, el("option", { value: "WHATSAPP" }, "WhatsApp"), el("option", { value: "EMAIL" }, "Email"), el("option", { value: "SMS" }, "SMS"));
       const body = el("textarea", { rows: "8" });
       body.value = draft.body;
       const box = el("div");

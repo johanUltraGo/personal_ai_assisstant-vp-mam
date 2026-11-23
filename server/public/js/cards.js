@@ -5,7 +5,7 @@ import { api, el, button, emit, toLocalInput } from "./api.js";
  * with Send and Cancel. Only the Send tap can make anything leave.
  */
 export function sendCard(pending) {
-  const channel = pending.channel === "EMAIL" ? "Email" : "WhatsApp";
+  const channel = pending.channel === "EMAIL" ? "Email" : pending.channel === "SMS" ? "SMS" : "WhatsApp";
   const to = pending.recipientAddress ? `${pending.recipientName} (${pending.recipientAddress})` : `${pending.recipientName} — you choose the chat in WhatsApp`;
   const status = el("p", { class: "hint", "aria-live": "polite" });
   const actions = el("div", { class: "button-row" });
@@ -28,13 +28,14 @@ export function sendCard(pending) {
     button("Send", async () => {
       const result = await api(`/api/messaging/pending/${pending.id}/send`, { method: "POST" });
       if (result.handoffUrl && result.status === "HANDED_OFF") {
-        finish("WhatsApp is opening with the message typed — choose the chat and tap send there.");
+        const app = pending.channel === "SMS" ? "Messages" : "WhatsApp";
+        finish(`${app} is opening with the message typed. Check it and tap send there.`);
         window.open(result.handoffUrl, "_blank", "noopener");
       } else if (result.status === "SENT") {
         finish("Sent.");
       } else {
         finish(`Not sent: ${result.record.blockReason || result.status}`);
-        if (result.handoffUrl) actions.append(el("a", { href: result.handoffUrl, target: "_blank", rel: "noopener" }, "Send it yourself in WhatsApp"));
+        if (result.handoffUrl) actions.append(el("a", { href: result.handoffUrl, target: "_blank", rel: "noopener" }, pending.channel === "SMS" ? "Send it yourself in Messages" : "Send it yourself in WhatsApp"));
       }
       emit("messages-changed");
       emit("alerts-changed");

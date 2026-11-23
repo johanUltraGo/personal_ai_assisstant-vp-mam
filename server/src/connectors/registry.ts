@@ -1,6 +1,6 @@
 import { prisma } from "../db";
 import { GmailApiClient, GmailConnector, gmailFromEnvironment } from "./gmailConnector";
-import { DriveClient, DriveConnector, DriveFile, GoogleDriveApiClient, driveFromEnvironment } from "./driveConnector";
+import { DriveClient, DriveConnector, DriveFile, DriveSearchHit, GoogleDriveApiClient, driveFromEnvironment } from "./driveConnector";
 import { whatsappFromEnvironment } from "./whatsappConnector";
 import { accessTokenFor } from "../google/accounts";
 import { serviceAccountAccessToken, serviceAccountKey } from "../google/serviceAccount";
@@ -29,6 +29,21 @@ class MultiAccountDriveClient implements DriveClient {
       }
     }
     throw lastError;
+  }
+
+  /** Every account is searched; the same file seen twice is listed once. */
+  async search(query: string, limit: number): Promise<DriveSearchHit[]> {
+    const seen = new Map<string, DriveSearchHit>();
+    let failures = 0;
+    for (const client of this.clients) {
+      try {
+        for (const hit of (await client.search?.(query, limit)) ?? []) if (!seen.has(hit.id)) seen.set(hit.id, hit);
+      } catch {
+        failures++;
+      }
+    }
+    if (failures === this.clients.length && failures > 0) throw new Error("Drive search failed for every connected account.");
+    return [...seen.values()].slice(0, limit);
   }
 }
 

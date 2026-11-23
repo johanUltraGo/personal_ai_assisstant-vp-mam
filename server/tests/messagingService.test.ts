@@ -92,6 +92,19 @@ describe("prepare + sendPending — the server-enforced 'Send?'", () => {
     expect(result.handoffUrl).toBe("https://wa.me/919876543210?text=Hello");
   });
 
+  it("hands an SMS to the phone's Messages app with the text typed (free, nothing sent by the server)", async () => {
+    const person = await contactService.createContact({ displayName: "Mrs. Kala", whatsappNumber: "+91 98765 43210" });
+    const pending = await messagingService.prepareMessage({ contactId: person.id, channel: "SMS", body: "School closes at 1 pm" });
+    const result = await messagingService.sendPending(pending.id, { gmail: new GmailConnector("x"), whatsapp: new WhatsAppConnector() });
+    expect(result.status).toBe("HANDED_OFF");
+    expect(result.handoffUrl).toBe("sms:+919876543210?body=School%20closes%20at%201%20pm");
+  });
+
+  it("refuses an SMS to a group or a contact without a number", async () => {
+    const group = await contactService.createContact({ displayName: "Parents group", kind: "GROUP" });
+    await expect(messagingService.prepareMessage({ contactId: group.id, channel: "SMS", body: "Hi" })).rejects.toThrow(/no phone number/);
+  });
+
   it("uses the Business API for a person when it is configured", async () => {
     const sent: any[] = [];
     const person = await contactService.createContact({ displayName: "Mrs. Rani", whatsappNumber: "+919800000000" });

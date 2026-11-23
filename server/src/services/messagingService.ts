@@ -3,6 +3,7 @@ import { prisma } from "../db";
 import * as contactService from "./contactService";
 import { GmailConnector } from "../connectors/gmailConnector";
 import { WhatsAppConnector, WhatsAppWindowError, whatsappHandoffUrl } from "../connectors/whatsappConnector";
+import { smsHandoffUrl } from "../connectors/smsConnector";
 import { ConnectorNotConfiguredError } from "../connectors/connector";
 import { BadRequestError, NotFoundError } from "../http/errors";
 import { logActivity } from "./activityService";
@@ -23,7 +24,7 @@ export async function resolveRecipient(name: string): Promise<RecipientResolutio
   return { status: "not_found" };
 }
 
-export type MessageChannel = "EMAIL" | "WHATSAPP";
+export type MessageChannel = "EMAIL" | "WHATSAPP" | "SMS";
 
 export interface PrepareInput {
   contactId: string;
@@ -47,6 +48,9 @@ export async function prepareMessage(input: PrepareInput): Promise<PendingMessag
   if (input.channel === "EMAIL") {
     if (!contact.email) throw new BadRequestError(`${contact.displayName} has no email address on file.`);
     address = contact.email;
+  } else if (input.channel === "SMS") {
+    if (contact.kind === "GROUP" || !contact.whatsappNumber) throw new BadRequestError(`${contact.displayName} has no phone number on file for SMS.`);
+    address = contact.whatsappNumber;
   } else {
     // Groups have no number: WhatsApp opens its chat picker so she chooses the group.
     address = contact.kind === "GROUP" ? null : contact.whatsappNumber;
@@ -110,6 +114,9 @@ export async function sendPending(id: string, connectors: MessagingConnectors): 
       await connectors.gmail.send({ to: message.recipientAddress!, subject: message.subject ?? "", body: message.body });
       fromAccount = connectors.gmail.accountLabel;
       status = "SENT";
+    } else if (message.channel === "SMS") {
+      handoffUrl = smsHandoffUrl(message.recipientAddress, message.body);
+      status = "HANDED_OFF";
     } else if (message.recipientKind === "PERSON" && message.recipientAddress && connectors.whatsapp.apiConfigured) {
       await connectors.whatsapp.send({ to: message.recipientAddress, body: message.body });
       status = "SENT";
@@ -154,7 +161,7 @@ export async function sendPending(id: string, connectors: MessagingConnectors): 
   const what = `${channelName(message.channel)} to ${message.recipientName}`;
   const summary = {
     SENT: `Sent the ${what} you approved.`,
-    HANDED_OFF: `Opened WhatsApp with the message to ${message.recipientName} ready for you to send.`,
+    HANDED_OFF: `Opened ${message.channel === "SMS" ? "Messages" : "WhatsApp"} with the message to ${message.recipientName} ready for you to send.`,
     BLOCKED: `Could not send the ${what}: ${blockReason}`,
     FAILED: `Sending the ${what} failed: ${blockReason}`,
   }[status];
@@ -176,5 +183,5 @@ export function listSent(limit = 50) {
 }
 
 function channelName(channel: string) {
-  return channel === "EMAIL" ? "email" : "WhatsApp message";
+  return channel === "EMAIL" ? "email" : channel === "SMS" ? "SMS" : "WhatsApp message";
 }

@@ -7,7 +7,7 @@ import { api, el, fmtTime } from "./api.js";
 
 const $ = (id) => document.getElementById(id);
 const DONE = new Set(["COMPLETED", "CANCELLED"]);
-const SENT_STATUS = { SENT: "sent", HANDED_OFF: "opened in WhatsApp", BLOCKED: "not sent", FAILED: "failed", PENDING: "waiting" };
+const SENT_STATUS = { SENT: "sent", HANDED_OFF: "opened on phone", BLOCKED: "not sent", FAILED: "failed", PENDING: "waiting" };
 const humanise = (status) => String(status || "").toLowerCase().replaceAll("_", " ");
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 const shortDay = (v) => new Date(v).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });

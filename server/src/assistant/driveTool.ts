@@ -34,3 +34,24 @@ registerTool(
     },
   })
 );
+
+registerTool(
+  defineTool({
+    name: "search_drive",
+    description:
+      "Search her Google Drive (and the school Drive files shared with the assistant) by file name or words inside files. Returns names, ids and links; use read_drive_document to read one.",
+    input_schema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["query"],
+      properties: { query: { type: "string", description: "Words to look for, e.g. 'sports day circular'" } },
+    },
+    schema: z.object({ query: z.string().trim().min(1).max(200) }),
+    async run({ query }) {
+      const drive = await registry.driveConnector();
+      const hits = await drive.search(query, 10);
+      await logActivity("drive.search", `Searched Drive for "${query}" (${hits.length} found).`);
+      return hits;
+    },
+  })
+);

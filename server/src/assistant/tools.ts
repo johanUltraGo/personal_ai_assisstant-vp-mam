@@ -223,7 +223,7 @@ const tools: AssistantTool[] = [
     schema: z.object({ name: z.string().trim().min(1) }),
     async run({ name }) {
       const matches = await contactService.findContactsByName(name);
-      return matches.map((c) => ({ id: c.id, name: c.displayName, kind: c.kind, hasEmail: !!c.email, hasWhatsApp: c.kind === "GROUP" || !!c.whatsappNumber }));
+      return matches.map((c) => ({ id: c.id, name: c.displayName, kind: c.kind, hasEmail: !!c.email, hasWhatsApp: c.kind === "GROUP" || !!c.whatsappNumber, hasPhoneForSms: c.kind === "PERSON" && !!c.whatsappNumber }));
     },
   }),
   defineTool({
@@ -231,10 +231,10 @@ const tools: AssistantTool[] = [
     description:
       "Prepare an email or WhatsApp message she asked for. This does NOT send: her screen shows the exact message with one Send? button. Afterwards tell her it is ready to send.",
     input_schema: obj(
-      { contactId: str("Id from find_contacts"), channel: { type: "string", enum: ["EMAIL", "WHATSAPP"] }, subject: str("Email subject"), body: str("Full message text"), calendarEventId: str("School calendar event this notice is about, if any") },
+      { contactId: str("Id from find_contacts"), channel: { type: "string", enum: ["EMAIL", "WHATSAPP", "SMS"] }, subject: str("Email subject"), body: str("Full message text"), calendarEventId: str("School calendar event this notice is about, if any") },
       ["contactId", "channel", "body"]
     ),
-    schema: z.object({ contactId: z.string().min(1), channel: z.enum(["EMAIL", "WHATSAPP"]), subject: z.string().optional(), body: z.string().trim().min(1), calendarEventId: z.string().optional() }),
+    schema: z.object({ contactId: z.string().min(1), channel: z.enum(["EMAIL", "WHATSAPP", "SMS"]), subject: z.string().optional(), body: z.string().trim().min(1), calendarEventId: z.string().optional() }),
     async run(input, ctx) {
       const pending = await messagingService.prepareMessage(input);
       ctx.cards.push({ type: "send", pending });
