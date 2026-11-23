@@ -61,13 +61,14 @@ function setBubble(id, text) {
 // rewritten by the server (in parallel, so the reply is not delayed).
 let heardTurn = 0;
 function showHeard(text) {
-  setBubble("heard", text);
-  if (!/[஀-௿]/.test(text)) return;
   const turn = ++heardTurn;
-  $("heard-lang").textContent = "writing in English…";
+  if (!/[஀-௿]/.test(text)) return setBubble("heard", text);
+  // Never show Tamil letters: wait for the English.
+  $("heard").textContent = "…";
+  $("heard-lang").textContent = "";
   api("/api/assistant/english", { json: { text } })
     .then(({ english }) => { if (turn === heardTurn) setBubble("heard", english); })
-    .catch(() => { if (turn === heardTurn) setBubble("heard", text); });
+    .catch(() => { if (turn === heardTurn) $("heard").textContent = "(heard you; showing the reply below)"; });
 }
 
 function showReply(text) {
@@ -137,21 +138,39 @@ function speak(text) {
   window.speechSynthesis.speak(utterance);
 }
 
-// Listening: browser speech recognition (free, built into Chrome). It listens
-// in Tamil, which also catches English words; English may come back spelled in
-// Tamil letters, and the assistant reads it back as English.
+// Listening: browser speech recognition (free, built into Chrome). Indian
+// English by default so her words come back in English; the "speak Tamil"
+// switch listens in Tamil, and the page then shows only the English meaning.
+const LISTEN_KEY = "vp-voice-listen-lang";
+function listenLang() {
+  try { return localStorage.getItem(LISTEN_KEY) === "ta-IN" ? "ta-IN" : "en-IN"; } catch { return "en-IN"; }
+}
+function showListenLang() {
+  const tamil = listenLang() === "ta-IN";
+  const button = $("listen-lang");
+  if (!button) return;
+  button.textContent = tamil ? "listening in Tamil: switch to English" : "speak Tamil instead";
+  button.setAttribute("aria-pressed", String(tamil));
+}
+$("listen-lang")?.addEventListener("click", () => {
+  try { localStorage.setItem(LISTEN_KEY, listenLang() === "ta-IN" ? "en-IN" : "ta-IN"); } catch {}
+  showListenLang();
+});
+showListenLang();
 function listen() {
   const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!Recognition) return;
   recognition = new Recognition();
-  recognition.lang = "ta-IN";
+  recognition.lang = listenLang();
   recognition.interimResults = true;
   recognition.continuous = false;
   let transcript = "";
   recognition.onstart = () => setState("listening");
   recognition.onresult = (event) => {
     transcript = Array.from(event.results).map((r) => r[0].transcript).join(" ");
-    showHeard(transcript);
+    // Tamil mode: convert once, when she has finished speaking.
+    if (!/[஀-௿]/.test(transcript)) showHeard(transcript);
+    else { $("heard").textContent = "…"; $("heard-lang").textContent = ""; }
   };
   recognition.onerror = (event) => {
     // Opening the app can't always start the microphone by itself; then one tap does.
