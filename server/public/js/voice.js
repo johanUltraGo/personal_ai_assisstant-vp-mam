@@ -42,17 +42,32 @@ function languageOf(text) {
   return { lang: "en", label: "in English" };
 }
 
+// Replies may use **bold**; show it as bold instead of printing the stars.
+function fillText(node, text) {
+  const parts = text.split(/\*\*(.+?)\*\*/g);
+  node.replaceChildren(...parts.map((part, i) => (i % 2 ? Object.assign(document.createElement("strong"), { textContent: part }) : document.createTextNode(part))));
+}
+
 function setBubble(id, text) {
   const node = $(id);
-  node.textContent = text;
+  fillText(node, text);
   const { lang, label } = languageOf(text);
   if (text.trim()) node.lang = lang;
   else node.removeAttribute("lang");
   $(`${id}-lang`).textContent = text.trim() ? label : "";
 }
 
+// The heard bubble is shown in English: Tamil-script transcripts are
+// rewritten by the server (in parallel, so the reply is not delayed).
+let heardTurn = 0;
 function showHeard(text) {
   setBubble("heard", text);
+  if (!/[஀-௿]/.test(text)) return;
+  const turn = ++heardTurn;
+  $("heard-lang").textContent = "writing in English…";
+  api("/api/assistant/english", { json: { text } })
+    .then(({ english }) => { if (turn === heardTurn) setBubble("heard", english); })
+    .catch(() => { if (turn === heardTurn) setBubble("heard", text); });
 }
 
 function showReply(text) {
@@ -107,7 +122,7 @@ async function ask(text, inputMode) {
 function speak(text) {
   if (!("speechSynthesis" in window) || !text) return setState("idle");
   window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
+  const utterance = new SpeechSynthesisUtterance(text.replace(/\*\*/g, ""));
   utterance.lang = /[஀-௿]/.test(text) ? "ta-IN" : "en-IN";
   utterance.onstart = () => setState("speaking");
   utterance.onboundary = () => {

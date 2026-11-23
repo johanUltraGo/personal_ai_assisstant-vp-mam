@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
+import { heardInEnglish } from "../ai/toEnglish";
 import { CONVERSATION_KINDS, conversationTranscript, runTurn, startConversation } from "../assistant/agent";
 
 export const assistantRouter = Router();
@@ -19,4 +20,10 @@ const turnSchema = z.object({ text: z.string().trim().min(1).max(4000), inputMod
 assistantRouter.post("/conversations/:id/messages", async (req, res) => {
   const { text, inputMode } = turnSchema.parse(req.body);
   res.json(await runTurn(req.params.id, text, inputMode));
+});
+
+/** What she said, written in English for display (voice transcripts arrive in Tamil script). */
+assistantRouter.post("/english", async (req, res) => {
+  const { text } = z.object({ text: z.string().trim().min(1).max(4000) }).parse(req.body);
+  res.json({ english: await heardInEnglish(text) });
 });
