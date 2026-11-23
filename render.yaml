@@ -30,6 +30,7 @@ services:
       - { key: GOOGLE_OAUTH_REDIRECT_URI, sync: false }
       - { key: TOKEN_ENCRYPTION_KEY, sync: false }
       - { key: SCHOOL_CALENDAR_FILE_ID, sync: false }
+      - { key: VP_EMAIL, sync: false }
       - { key: VAPID_PUBLIC_KEY, sync: false }
       - { key: VAPID_PRIVATE_KEY, sync: false }
       - { key: VAPID_SUBJECT, sync: false }

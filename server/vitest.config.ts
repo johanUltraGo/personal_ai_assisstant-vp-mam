@@ -22,6 +22,7 @@ export default defineConfig({
       // The live access settings in .env (her PIN, secure cookies for the
       // https tunnel) must not leak into tests; auth tests set their own.
       APP_ACCESS_PIN: "",
+      VP_EMAIL: "",
       COOKIE_SECURE: "",
       HOST: "",
     },

@@ -36,9 +36,10 @@ export async function warnIfCalendarEnding(gmail: GmailConnector, notifier: Noti
     `Please send the new academic year's calendar (PDF, Excel or Google Sheet) so event and holiday alerts continue. ` +
     `Until it is loaded, the assistant has no school events after ${endText}.\n\nYour assistant`;
 
-  if (gmail.health().configured && gmail.accountLabel.includes("@")) {
+  const to = process.env.VP_EMAIL?.trim() || (gmail.accountLabel.includes("@") ? gmail.accountLabel : "");
+  if (gmail.health().configured && to) {
     try {
-      await gmail.send({ to: gmail.accountLabel, subject: "School calendar is ending: please share the new one", body });
+      await gmail.send({ to, subject: "School calendar is ending: please share the new one", body });
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error("[calendar] expiry email failed:", (err as Error).message);
