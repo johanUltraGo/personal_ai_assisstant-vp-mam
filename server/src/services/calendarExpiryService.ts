@@ -45,7 +45,7 @@ export async function warnIfCalendarEnding(gmail: GmailConnector, notifier: Noti
       console.error("[calendar] expiry email failed:", (err as Error).message);
     }
   }
-  await notifier.send({ title: "School calendar is ending", body: `The calendar ${when}. Please share the new year's calendar.`, data: { url: "/#more" } });
+  await notifier.send({ title: "School calendar is ending", body: `The calendar ${when}. Please share the new year's calendar.`, data: { url: "/#more", noEmail: "true" } });
   await prisma.activityLog.create({ data: { at: now, kind: "calendar.expiry_warned", summary: `Told you the school calendar ${when}.` } });
   return "sent";
 }

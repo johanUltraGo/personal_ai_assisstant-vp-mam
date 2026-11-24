@@ -26,8 +26,18 @@ export class ConsoleNotifier implements Notifier {
   }
 }
 
-/** Web Push when VAPID keys are set (design §9), otherwise the console. */
+/** Phone (Web Push or console), plus an email copy to VP_EMAIL when it is set. */
 export async function notifierFromEnvironment(): Promise<Notifier> {
+  const phone = await phoneNotifier();
+  const to = process.env.VP_EMAIL?.trim();
+  if (!to) return phone;
+  const { EmailAlsoNotifier } = await import("./emailAlsoNotifier");
+  const { gmailConnector } = await import("../connectors/registry");
+  return new EmailAlsoNotifier(phone, gmailConnector, to);
+}
+
+/** Web Push when VAPID keys are set (design §9), otherwise the console. */
+async function phoneNotifier(): Promise<Notifier> {
   const publicKey = process.env.VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
   if (!publicKey || !privateKey) return new ConsoleNotifier();
