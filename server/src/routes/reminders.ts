@@ -10,6 +10,7 @@ const createReminderSchema = z.object({
   fireAt: z.coerce.date(),
   taskId: z.string().optional(),
   repeatRule: z.enum(["DAILY", "WEEKLY"]).optional(),
+  channel: z.enum(["EMAIL", "WHATSAPP", "PHONE"]).optional(),
 });
 
 /** On-demand only — there is no endpoint that creates a reminder

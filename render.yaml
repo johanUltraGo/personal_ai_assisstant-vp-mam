@@ -31,6 +31,10 @@ services:
       - { key: TOKEN_ENCRYPTION_KEY, sync: false }
       - { key: SCHOOL_CALENDAR_FILE_ID, sync: false }
       - { key: VP_EMAIL, sync: false }
+      - key: WHATSAPP_SELF_PROVIDER
+        value: callmebot
+      - { key: VP_WHATSAPP_NUMBER, sync: false }
+      - { key: CALLMEBOT_API_KEY, sync: false }
       - { key: VAPID_PUBLIC_KEY, sync: false }
       - { key: VAPID_PRIVATE_KEY, sync: false }
       - { key: VAPID_SUBJECT, sync: false }

@@ -80,6 +80,8 @@ model Reminder {
   // The time this occurrence was planned for; snooze/delay/retries move
   // fireAt but never this, so repeats stay on her chosen time.
   repeatAnchor DateTime?
+  // Where she asked for it: null = phone + Gmail, or EMAIL | WHATSAPP | PHONE.
+  channel     String?
   createdAt   DateTime @default(now())
 
   task Task? @relation(fields: [taskId], references: [id], onDelete: SetNull)

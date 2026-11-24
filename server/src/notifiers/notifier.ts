@@ -26,14 +26,16 @@ export class ConsoleNotifier implements Notifier {
   }
 }
 
-/** Phone (Web Push or console), plus an email copy to VP_EMAIL when it is set. */
+/** Phone (Web Push or console), plus Gmail (VP_EMAIL) and WhatsApp to her own number when set. */
 export async function notifierFromEnvironment(): Promise<Notifier> {
   const phone = await phoneNotifier();
-  const to = process.env.VP_EMAIL?.trim();
-  if (!to) return phone;
+  const to = process.env.VP_EMAIL?.trim() || undefined;
+  const { whatsappSelfFromEnvironment } = await import("../connectors/whatsappSelf");
+  const whatsapp = whatsappSelfFromEnvironment();
+  if (!to && !whatsapp) return phone;
   const { EmailAlsoNotifier } = await import("./emailAlsoNotifier");
   const { gmailConnector } = await import("../connectors/registry");
-  return new EmailAlsoNotifier(phone, gmailConnector, to);
+  return new EmailAlsoNotifier(phone, gmailConnector, to, whatsapp);
 }
 
 /** Web Push when VAPID keys are set (design §9), otherwise the console. */

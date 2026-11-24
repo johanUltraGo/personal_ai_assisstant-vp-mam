@@ -178,17 +178,18 @@ const tools: AssistantTool[] = [
   }),
   defineTool({
     name: "set_reminder",
-    description: "Create a reminder she asked for, at the time she gave (up to any date). Optional repeat only if she asked for it.",
+    description: "Create a reminder she asked for, at the time she gave (up to any date). Optional repeat only if she asked for it. channel: EMAIL if she says Gmail/email/mail, WHATSAPP if she says WhatsApp, PHONE if she says only a phone notification; leave it out otherwise (then it goes to her phone and Gmail).",
     input_schema: obj(
-      { label: str("What to remind her about"), fireAt: str(DATETIME_HINT), taskId: str("Related task id, if any"), repeat: { type: "string", enum: ["DAILY", "WEEKLY"] } },
+      { label: str("What to remind her about"), fireAt: str(DATETIME_HINT), taskId: str("Related task id, if any"), repeat: { type: "string", enum: ["DAILY", "WEEKLY"] }, channel: { type: "string", enum: ["EMAIL", "WHATSAPP", "PHONE"] } },
       ["label", "fireAt"]
     ),
-    schema: z.object({ label: z.string().trim().min(1), fireAt: isoDateTime, taskId: z.string().optional(), repeat: z.enum(["DAILY", "WEEKLY"]).optional() }),
+    schema: z.object({ label: z.string().trim().min(1), fireAt: isoDateTime, taskId: z.string().optional(), repeat: z.enum(["DAILY", "WEEKLY"]).optional(), channel: z.enum(["EMAIL", "WHATSAPP", "PHONE"]).optional() }),
     async run(input, ctx) {
       if (input.fireAt.getTime() < Date.now() - 60_000) throw new Error("That time has already passed. Ask her for a future time.");
-      const reminder = await reminderService.createReminder({ label: input.label, fireAt: input.fireAt, taskId: input.taskId, repeatRule: input.repeat });
-      ctx.cards.push({ type: "changed", summary: `Reminder "${reminder.label}" — ${when(reminder.fireAt)}` });
-      return { id: reminder.id, label: reminder.label, fireAt: DateTime.fromJSDate(reminder.fireAt, { zone: schoolTimezone() }).toISO(), repeat: reminder.repeatRule };
+      const reminder = await reminderService.createReminder({ label: input.label, fireAt: input.fireAt, taskId: input.taskId, repeatRule: input.repeat, channel: input.channel });
+      const where = input.channel ? { EMAIL: " (Gmail)", WHATSAPP: " (WhatsApp)", PHONE: " (phone)" }[input.channel] : "";
+      ctx.cards.push({ type: "changed", summary: `Reminder "${reminder.label}"${where} — ${when(reminder.fireAt)}` });
+      return { id: reminder.id, label: reminder.label, fireAt: DateTime.fromJSDate(reminder.fireAt, { zone: schoolTimezone() }).toISO(), repeat: reminder.repeatRule, channel: reminder.channel ?? "PHONE_AND_GMAIL" };
     },
   }),
   defineTool({

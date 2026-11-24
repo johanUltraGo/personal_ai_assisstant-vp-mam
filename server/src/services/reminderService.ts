@@ -5,8 +5,12 @@ import { logActivity } from "./activityService";
 
 const MAX_RETRIES = 3;
 
+export type ReminderChannel = "EMAIL" | "WHATSAPP" | "PHONE";
+
 export interface CreateReminderInput {
   label: string;
+  /** Where she asked for it; omitted = phone + Gmail. */
+  channel?: ReminderChannel;
   fireAt: Date;
   taskId?: string;
   /** Minimal recurrence support — spec §10 only says "repeats happen only
@@ -24,6 +28,7 @@ export async function createReminder(input: CreateReminderInput) {
       taskId: input.taskId,
       repeatRule: input.repeatRule,
       repeatAnchor: input.repeatRule ? input.fireAt : null,
+      channel: input.channel ?? null,
       status: "PENDING",
     },
   });
@@ -50,12 +55,12 @@ function nextOccurrence(fireAt: Date, rule: "DAILY" | "WEEKLY"): Date {
  * planned from the original time (repeatAnchor), once this one is used up —
  * delivered or finally failed — so snoozes and retries never shift it.
  */
-async function scheduleNextOccurrence(reminder: { label: string; fireAt: Date; taskId: string | null; repeatRule: string | null; repeatAnchor: Date | null }) {
+async function scheduleNextOccurrence(reminder: { label: string; fireAt: Date; taskId: string | null; repeatRule: string | null; repeatAnchor: Date | null; channel: string | null }) {
   if (reminder.repeatRule !== "DAILY" && reminder.repeatRule !== "WEEKLY") return;
   let next = nextOccurrence(reminder.repeatAnchor ?? reminder.fireAt, reminder.repeatRule);
   // If the server was off for days, skip occurrences already in the past.
   while (next.getTime() < Date.now() - 60_000) next = nextOccurrence(next, reminder.repeatRule);
-  await createReminder({ label: reminder.label, fireAt: next, taskId: reminder.taskId ?? undefined, repeatRule: reminder.repeatRule });
+  await createReminder({ label: reminder.label, fireAt: next, taskId: reminder.taskId ?? undefined, repeatRule: reminder.repeatRule, channel: (reminder.channel as ReminderChannel | null) ?? undefined });
 }
 
 /**
@@ -72,7 +77,7 @@ export async function fireReminder(reminderId: string, notifier: Notifier = new 
 
   let delivered = false;
   try {
-    delivered = await notifier.send({ title: "Reminder", body: reminder.label, data: { reminderId, url: "/#reminders-section" } });
+    delivered = await notifier.send({ title: "Reminder", body: reminder.label, data: { reminderId, url: "/#reminders-section", ...(reminder.channel ? { channel: reminder.channel } : {}) } });
   } catch {
     delivered = false;
   }

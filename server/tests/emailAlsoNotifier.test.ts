@@ -27,3 +27,58 @@ describe("reminders also reach her Gmail", () => {
     expect(sent).toHaveLength(0);
   });
 });
+
+describe("reminders go where she asked", () => {
+  const make = () => {
+    const emails: any[] = [];
+    const wa: string[] = [];
+    const pushes: any[] = [];
+    const gmail = new GmailConnector("vp@school.edu", { send: async (e) => { emails.push(e); return { id: "1" }; } });
+    const phone = { confirmsDelivery: false, send: async (p: any) => { pushes.push(p); return true; } };
+    const whatsapp = { provider: "test", send: async (t: string) => { wa.push(t); } };
+    return { emails, wa, pushes, n: new EmailAlsoNotifier(phone, async () => gmail, "vp@school.edu", whatsapp) };
+  };
+
+  it("WhatsApp reminder: WhatsApp to her number plus a Gmail copy, no phone push", async () => {
+    const t = make();
+    expect(await t.n.send({ title: "Reminder", body: "call transport", data: { channel: "WHATSAPP" } })).toBe(true);
+    expect(t.wa).toEqual(["Reminder: call transport"]);
+    expect(t.emails).toHaveLength(1);
+    expect(t.pushes).toHaveLength(0);
+    expect(t.n.confirmsDelivery).toBe(true);
+  });
+
+  it("Gmail reminder: email only", async () => {
+    const t = make();
+    await t.n.send({ title: "Reminder", body: "x", data: { channel: "EMAIL" } });
+    expect(t.emails).toHaveLength(1);
+    expect(t.wa).toHaveLength(0);
+    expect(t.pushes).toHaveLength(0);
+  });
+
+  it("Phone-only reminder: no email, no WhatsApp", async () => {
+    const t = make();
+    await t.n.send({ title: "Reminder", body: "x", data: { channel: "PHONE" } });
+    expect(t.pushes).toHaveLength(1);
+    expect(t.emails).toHaveLength(0);
+    expect(t.wa).toHaveLength(0);
+  });
+});
+
+describe("CallMeBot", () => {
+  it("calls the API with her number, the text and the key", async () => {
+    const { CallMeBotWhatsApp } = await import("../src/connectors/whatsappSelf");
+    let url = "";
+    const fake = (async (u: string) => { url = u; return new Response("Message queued. You will receive it in a few seconds.", { status: 200 }); }) as any;
+    await new CallMeBotWhatsApp("+91 98765 43210", "123456", fake).send("Reminder: hi");
+    expect(url).toContain("phone=%2B919876543210");
+    expect(url).toContain("apikey=123456");
+    expect(url).toContain("text=Reminder%3A+hi");
+  });
+
+  it("throws when CallMeBot reports a bad key", async () => {
+    const { CallMeBotWhatsApp } = await import("../src/connectors/whatsappSelf");
+    const fake = (async () => new Response("APIKey is not valid", { status: 200 })) as any;
+    await expect(new CallMeBotWhatsApp("+91", "x", fake).send("hi")).rejects.toThrow(/did not send/);
+  });
+});

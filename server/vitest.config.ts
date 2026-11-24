@@ -23,6 +23,8 @@ export default defineConfig({
       // https tunnel) must not leak into tests; auth tests set their own.
       APP_ACCESS_PIN: "",
       VP_EMAIL: "",
+      VP_WHATSAPP_NUMBER: "",
+      CALLMEBOT_API_KEY: "",
       COOKIE_SECURE: "",
       HOST: "",
     },
