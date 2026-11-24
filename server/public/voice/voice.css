@@ -260,6 +260,7 @@ body[data-state="thinking"] .bubble-reply { opacity: 0.5; }
   gap: var(--space-xs);
   padding: var(--space-md) var(--gutter) calc(var(--space-lg) + env(safe-area-inset-bottom));
 }
+.dock-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-xs); }
 .status { margin: 0; font-size: var(--text-sm); color: var(--color-muted); min-height: 1.5em; text-align: center; }
 body[data-state="listening"] .status, body[data-state="speaking"] .status { color: var(--color-teal); font-weight: 500; }
 body[data-state="thinking"] .status { color: var(--color-ink-2); font-weight: 500; }
