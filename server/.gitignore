@@ -16,3 +16,4 @@ logs/
 
 # Google service account key (secret)
 google-service-account*.json
+.vercel

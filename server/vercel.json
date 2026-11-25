@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npx prisma generate && npx prisma migrate deploy",
+  "outputDirectory": "public",
+  "rewrites": [{ "source": "/api/:path*", "destination": "/api" }],
+  "functions": {
+    "api/index.ts": { "maxDuration": 60 },
+    "api/tick.ts": { "maxDuration": 60, "experimentalTriggers": [{ "type": "schedule/v1beta" }] }
+  },
+  "schedules": {
+    "vp-tick": { "schedule": "*/15 * * * *", "timezone": "Asia/Kolkata", "function": "api/tick" }
+  }
+}

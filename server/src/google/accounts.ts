@@ -22,7 +22,7 @@ const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 const STATE_TTL_MS = 10 * 60_000;
 
-let fetchImpl: typeof fetch = (...args) => fetch(...args);
+let fetchImpl: typeof fetch = (input, init) => fetch(input, init);
 /** Test seam for Google's endpoints. */
 export function setFetch(f: typeof fetch) {
   fetchImpl = f;
