@@ -1,6 +1,6 @@
 /* Hallmark · shape: app screen · genre: modern-minimal · theme: custom (by request: mobile-first, light canvas, white cards, one accent) · redesign: full
  * idea: "one desk, two postures: a phone shows one drawer at a time from a bottom bar; a laptop lays the drawers out beside a sidebar" · vibe: "clean, high-contrast, roomy, calm"
- * paper: oklch(97.3% 0.003 255) light neutral canvas, white cards · accent: oklch(52% 0.19 262) one clear blue · display + body: Public Sans (Noto Sans Tamil for Tamil)
+ * school identity (Wisdom Wealth crest): ivory page, white cards, navy oklch(28% 0.07 258) actions, crimson oklch(44% 0.19 5) for where-you-are marks · display: Libre Baskerville (the crest's serif voice) · body: Public Sans (Noto Sans Tamil)
  * nav: under 768px a fixed bottom bar of five views; 768-1023px a top bar; 1024px+ a left sidebar · signature: the Today view, greeting and four figures over the assistant and her day
  * states: signed out (PIN sheet), listening, empty lists, done cards, errors; one view at a time on phones (all views show without scripts)
  * axes: light/grotesk-sans/chromatic-blue · posture: restrained · contrast: pass · v2.0.0 */
@@ -38,7 +38,7 @@ h1, h2, h3 { font-family: var(--font-body); font-weight: 600; letter-spacing: va
 }
 .brand { display: flex; align-items: center; gap: var(--space-sm); min-width: 0; text-decoration: none; }
 .brand-logo { display: block; height: 3rem; width: auto; flex: none; }
-.brand h1 { font-size: var(--text-lg); font-weight: 700; white-space: nowrap; }
+.brand h1 { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 700; white-space: nowrap; color: var(--color-accent); }
 .voice-link {
   display: inline-flex;
   align-items: center;
@@ -81,7 +81,7 @@ h1, h2, h3 { font-family: var(--font-body); font-weight: 600; letter-spacing: va
 }
 .main-nav a:hover { color: var(--color-ink); }
 .main-nav a:active { background: var(--color-paper-3); }
-.main-nav a[aria-current="page"] { color: var(--color-accent-strong); border-top-color: var(--color-accent); }
+.main-nav a[aria-current="page"] { color: var(--color-crest); border-top-color: var(--color-crest); }
 .label-long { display: none; }
 
 /* The desk */
@@ -102,7 +102,7 @@ h1, h2, h3 { font-family: var(--font-body); font-weight: 600; letter-spacing: va
 
 .desk-head { display: grid; gap: var(--space-2xs); }
 .desk-date { color: var(--color-muted); font-size: var(--text-sm); }
-.greeting { font-size: var(--text-2xl); font-weight: 600; }
+.greeting { font-family: var(--font-display); font-size: var(--text-2xl); font-weight: 700; color: var(--color-accent); }
 
 /* Today at a glance: three figures and the next event, in one white card */
 .overview {
@@ -131,7 +131,8 @@ h1, h2, h3 { font-family: var(--font-body); font-weight: 600; letter-spacing: va
   border: var(--rule-hair) solid var(--color-rule);
   border-radius: var(--radius-card);
 }
-.block h2 { font-size: var(--text-lg); margin-bottom: var(--space-xs); }
+.block h2 { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 700; color: var(--color-accent); margin-bottom: var(--space-xs); }
+.block > h2::after, .panel-head h2::after { content: ""; display: block; width: 2rem; height: 3px; margin-top: var(--space-xs); background: var(--color-crest); border-radius: 2px; }
 .block h3 { margin: var(--space-lg) 0 var(--space-xs); font-size: var(--text-sm); color: var(--color-ink-2); letter-spacing: 0; }
 .panel-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); margin-bottom: var(--space-sm); }
 .panel-head h2 { margin: 0; }
@@ -283,7 +284,7 @@ details[open] > summary { margin-bottom: var(--space-sm); }
     white-space: nowrap;
   }
   .main-nav a:hover { background: var(--color-paper-3); }
-  .main-nav a[aria-current="page"] { background: var(--color-accent-soft); color: var(--color-accent-strong); }
+  .main-nav a[aria-current="page"] { background: var(--color-crest-soft); color: var(--color-crest); box-shadow: inset 3px 0 0 var(--color-crest); }
   .desk { gap: var(--space-xl); padding: var(--space-xl) var(--gutter) var(--space-3xl); width: min(100%, var(--container)); margin-inline: auto; }
   .greeting { font-size: var(--text-3xl); }
   .stat { padding: var(--space-lg); }
