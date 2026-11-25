@@ -5,6 +5,8 @@ services:
     runtime: node
     region: singapore
     plan: free
+    branch: voice-crystal-english-replies
+    autoDeploy: true
     rootDir: server
     buildCommand: npm run render-build
     startCommand: npm run render-start
@@ -36,8 +38,10 @@ services:
       - { key: META_WA_TOKEN, sync: false }
       - { key: META_WA_PHONE_NUMBER_ID, sync: false }
       - key: META_WA_TEMPLATE
-        value: vp_reminder
+        value: vp_task_reminder
       - { key: VP_WHATSAPP_NUMBER, sync: false }
+      - key: META_WA_TEMPLATE_LANG
+        value: en
       - { key: CALLMEBOT_API_KEY, sync: false }
       - { key: VAPID_PUBLIC_KEY, sync: false }
       - { key: VAPID_PRIVATE_KEY, sync: false }
