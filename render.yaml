@@ -35,11 +35,6 @@ services:
         value: callmebot
       - { key: VP_WHATSAPP_NUMBER, sync: false }
       - { key: CALLMEBOT_API_KEY, sync: false }
-      - key: SMS_PROVIDER
-        value: smsgate
-      - { key: SMSGATE_USERNAME, sync: false }
-      - { key: SMSGATE_PASSWORD, sync: false }
-      - { key: VP_SMS_NUMBER, sync: false }
       - { key: VAPID_PUBLIC_KEY, sync: false }
       - { key: VAPID_PRIVATE_KEY, sync: false }
       - { key: VAPID_SUBJECT, sync: false }

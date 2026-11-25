@@ -5,7 +5,7 @@ import { logActivity } from "./activityService";
 
 const MAX_RETRIES = 3;
 
-export type ReminderChannel = "EMAIL" | "WHATSAPP" | "SMS" | "PHONE";
+export type ReminderChannel = "EMAIL" | "WHATSAPP" | "PHONE";
 
 export interface CreateReminderInput {
   label: string;
