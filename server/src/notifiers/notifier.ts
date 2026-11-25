@@ -32,10 +32,14 @@ export async function notifierFromEnvironment(): Promise<Notifier> {
   const to = process.env.VP_EMAIL?.trim() || undefined;
   const { whatsappSelfFromEnvironment } = await import("../connectors/whatsappSelf");
   const whatsapp = whatsappSelfFromEnvironment();
-  if (!to && !whatsapp) return phone;
+  const { smsSenderFromEnvironment } = await import("../connectors/smsSender");
+  const smsSender = smsSenderFromEnvironment();
+  const smsTo = process.env.VP_SMS_NUMBER?.trim();
+  const sms = smsSender && smsTo ? { sender: smsSender, to: smsTo } : null;
+  if (!to && !whatsapp && !sms) return phone;
   const { EmailAlsoNotifier } = await import("./emailAlsoNotifier");
   const { gmailConnector } = await import("../connectors/registry");
-  return new EmailAlsoNotifier(phone, gmailConnector, to, whatsapp);
+  return new EmailAlsoNotifier(phone, gmailConnector, to, whatsapp, sms);
 }
 
 /** Web Push when VAPID keys are set (design §9), otherwise the console. */

@@ -2,6 +2,7 @@ import { prisma } from "../db";
 import { GmailApiClient, GmailConnector, gmailFromEnvironment } from "./gmailConnector";
 import { DriveClient, DriveConnector, DriveFile, DriveSearchHit, GoogleDriveApiClient, driveFromEnvironment } from "./driveConnector";
 import { whatsappFromEnvironment } from "./whatsappConnector";
+import { smsSenderFromEnvironment } from "./smsSender";
 import { accessTokenFor } from "../google/accounts";
 import { serviceAccountAccessToken, serviceAccountKey } from "../google/serviceAccount";
 import { MessagingConnectors } from "../services/messagingService";
@@ -67,5 +68,5 @@ export async function driveConnector(): Promise<DriveConnector> {
 }
 
 export async function messagingConnectors(): Promise<MessagingConnectors> {
-  return { gmail: await gmailConnector(), whatsapp: whatsappFromEnvironment() };
+  return { gmail: await gmailConnector(), whatsapp: whatsappFromEnvironment(), sms: smsSenderFromEnvironment() };
 }

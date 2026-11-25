@@ -82,3 +82,44 @@ describe("CallMeBot", () => {
     await expect(new CallMeBotWhatsApp("+91", "x", fake).send("hi")).rejects.toThrow(/did not send/);
   });
 });
+
+describe("SMS", () => {
+  it("SMS reminder goes to her number with a Gmail copy", async () => {
+    const emails: any[] = [];
+    const texts: Array<[string, string]> = [];
+    const gmail = new GmailConnector("vp@school.edu", { send: async (e) => { emails.push(e); return { id: "1" }; } });
+    const phone = { confirmsDelivery: false, send: async () => true };
+    const sender = { provider: "test", send: async (to: string, t: string) => { texts.push([to, t]); } };
+    const n = new EmailAlsoNotifier(phone, async () => gmail, "vp@school.edu", null, { sender, to: "+919876543210" });
+    expect(await n.send({ title: "Reminder", body: "staff meeting", data: { channel: "SMS" } })).toBe(true);
+    expect(texts).toEqual([["+919876543210", "Reminder: staff meeting"]]);
+    expect(emails).toHaveLength(1);
+  });
+
+  it("the gateway call uses basic auth, textMessage.text and an international number", async () => {
+    const { SmsGateSender, internationalNumber } = await import("../src/connectors/smsSender");
+    expect(internationalNumber("98765 43210")).toBe("+919876543210");
+    let req: any;
+    const fake = (async (url: string, init: any) => { req = { url, ...init }; return new Response("{}", { status: 202 }); }) as any;
+    await new SmsGateSender("user", "pass", undefined, fake).send("9876543210", "hi");
+    expect(req.url).toBe("https://api.sms-gate.app/3rdparty/v1/messages");
+    expect(req.headers.Authorization).toBe(`Basic ${Buffer.from("user:pass").toString("base64")}`);
+    expect(JSON.parse(req.body)).toEqual({ textMessage: { text: "hi" }, phoneNumbers: ["+919876543210"] });
+  });
+
+  it("an approved SMS to a person is sent automatically when the gateway is set up", async () => {
+    const contactService = await import("../src/services/contactService");
+    const messagingService = await import("../src/services/messagingService");
+    const { WhatsAppConnector } = await import("../src/connectors/whatsappConnector");
+    const texts: string[] = [];
+    const person = await contactService.createContact({ displayName: "Mrs. Kala", whatsappNumber: "+91 98765 43210" });
+    const pending = await messagingService.prepareMessage({ contactId: person.id, channel: "SMS", body: "Meeting at 3" });
+    const result = await messagingService.sendPending(pending.id, {
+      gmail: new GmailConnector("x"),
+      whatsapp: new WhatsAppConnector(),
+      sms: { provider: "test", send: async (_to, t) => { texts.push(t); } },
+    });
+    expect(result.status).toBe("SENT");
+    expect(texts).toEqual(["Meeting at 3"]);
+  });
+});

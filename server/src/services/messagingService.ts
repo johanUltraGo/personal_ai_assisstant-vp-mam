@@ -4,6 +4,7 @@ import * as contactService from "./contactService";
 import { GmailConnector } from "../connectors/gmailConnector";
 import { WhatsAppConnector, WhatsAppWindowError, whatsappHandoffUrl } from "../connectors/whatsappConnector";
 import { smsHandoffUrl } from "../connectors/smsConnector";
+import { SmsSender } from "../connectors/smsSender";
 import { ConnectorNotConfiguredError } from "../connectors/connector";
 import { BadRequestError, NotFoundError } from "../http/errors";
 import { logActivity } from "./activityService";
@@ -79,6 +80,8 @@ export async function prepareMessage(input: PrepareInput): Promise<PendingMessag
 export interface MessagingConnectors {
   gmail: GmailConnector;
   whatsapp: WhatsAppConnector;
+  /** Automatic SMS (gateway phone); without it SMS opens her Messages app. */
+  sms?: SmsSender | null;
 }
 
 export interface SendResult {
@@ -113,6 +116,10 @@ export async function sendPending(id: string, connectors: MessagingConnectors): 
     if (message.channel === "EMAIL") {
       await connectors.gmail.send({ to: message.recipientAddress!, subject: message.subject ?? "", body: message.body });
       fromAccount = connectors.gmail.accountLabel;
+      status = "SENT";
+    } else if (message.channel === "SMS" && connectors.sms && message.recipientAddress) {
+      await connectors.sms.send(message.recipientAddress, message.body);
+      fromAccount = `SMS gateway (${connectors.sms.provider})`;
       status = "SENT";
     } else if (message.channel === "SMS") {
       handoffUrl = smsHandoffUrl(message.recipientAddress, message.body);
