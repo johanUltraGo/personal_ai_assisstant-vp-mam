@@ -33,7 +33,7 @@ messagingRouter.get("/resolve-recipient", async (req, res) => {
 
 const prepareSchema = z.object({
   contactId: z.string().min(1),
-  channel: z.enum(["EMAIL", "WHATSAPP", "SMS"]),
+  channel: z.enum(["EMAIL", "WHATSAPP"]),
   subject: z.string().optional(),
   body: z.string().min(1),
   calendarEventId: z.string().optional(),

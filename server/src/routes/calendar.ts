@@ -64,7 +64,7 @@ calendarRouter.get("/prompts", async (_req, res) => {
 const respondSchema = z.object({
   approved: z.boolean(),
   contactId: z.string().optional(),
-  channel: z.enum(["EMAIL", "WHATSAPP", "SMS"]).optional(),
+  channel: z.enum(["EMAIL", "WHATSAPP"]).optional(),
   subject: z.string().optional(),
   body: z.string().optional(),
 });
