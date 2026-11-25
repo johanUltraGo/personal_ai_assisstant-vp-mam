@@ -59,9 +59,17 @@ export class MetaWhatsApp implements SelfWhatsApp {
         template: { name: this.template, language: { code: this.language }, components: [{ type: "body", parameters: [{ type: "text", text: param }] }] },
       }),
     });
-    if (!response.ok) {
-      const detail = (await response.text()).slice(0, 300);
-      throw new Error(`WhatsApp (Meta) did not send the message (${response.status}): ${detail}`);
+    if (response.ok) return;
+    const templateError = (await response.text()).slice(0, 300);
+    // Template not approved yet (or refused): plain text still works within
+    // 24 hours of her last message to the assistant's number.
+    const text_ = await this.fetchImpl(`https://graph.facebook.com/v21.0/${encodeURIComponent(this.phoneNumberId)}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ messaging_product: "whatsapp", to: this.to.replace(/\D/g, ""), type: "text", text: { body: text.slice(0, 4000) } }),
+    });
+    if (!text_.ok) {
+      throw new Error(`WhatsApp (Meta) did not send the message. Template: ${templateError} Text: ${(await text_.text()).slice(0, 200)}`);
     }
   }
 }
