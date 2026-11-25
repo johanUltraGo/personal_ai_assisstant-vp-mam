@@ -49,6 +49,6 @@ describe("task API", () => {
   it("serves the web UI at /", async () => {
     const res = await request(app).get("/");
     expect(res.status).toBe(200);
-    expect(res.text).toContain("Vice Principal AI");
+    expect(res.text).toContain("Vice Principal AI Assistant");
   });
 });

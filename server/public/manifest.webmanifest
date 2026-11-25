@@ -1,6 +1,6 @@
 {
   "id": "/",
-  "name": "Vice Principal AI",
+  "name": "Vice Principal AI Assistant",
   "short_name": "VP Assistant",
   "description": "Daily planning, reminders and reviewed messages for the Vice Principal.",
   "start_url": "/voice.html",

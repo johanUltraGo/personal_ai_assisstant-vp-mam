@@ -41,7 +41,9 @@ body {
   padding: var(--space-sm) var(--gutter);
 }
 .wordmark-logo { display: block; height: 3rem; width: auto; flex: none; }
-.wordmark span, .pill-link { white-space: nowrap; }
+.pill-link { white-space: nowrap; flex: none; }
+.wordmark span { font-size: var(--text-md); line-height: 1.25; min-width: 0; overflow-wrap: break-word; }
+@media (width >= 60rem) { .wordmark span { font-size: var(--text-xl); } }
 .wordmark {
   display: flex;
   align-items: center;
