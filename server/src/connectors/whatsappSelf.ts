@@ -28,6 +28,44 @@ export class CallMeBotWhatsApp implements SelfWhatsApp {
   }
 }
 
+/**
+ * Meta's official WhatsApp Cloud API, from the assistant's own number.
+ * Reminders use an approved template ("Reminder: {{1}}"), which WhatsApp
+ * allows at any time; free text would only work within 24 hours of her last
+ * message. The same app and number can later receive her messages (two-way chat).
+ */
+export class MetaWhatsApp implements SelfWhatsApp {
+  readonly provider = "meta";
+
+  constructor(
+    private readonly to: string,
+    private readonly token: string,
+    private readonly phoneNumberId: string,
+    private readonly template: string,
+    private readonly language: string,
+    private readonly fetchImpl: typeof fetch = fetch
+  ) {}
+
+  async send(text: string): Promise<void> {
+    // Template parameters may not contain new lines or tabs, or 4+ spaces in a row.
+    const param = text.replace(/[\r\n\t]+/g, " ").replace(/ {4,}/g, "   ").slice(0, 1000);
+    const response = await this.fetchImpl(`https://graph.facebook.com/v21.0/${encodeURIComponent(this.phoneNumberId)}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: this.to.replace(/\D/g, ""),
+        type: "template",
+        template: { name: this.template, language: { code: this.language }, components: [{ type: "body", parameters: [{ type: "text", text: param }] }] },
+      }),
+    });
+    if (!response.ok) {
+      const detail = (await response.text()).slice(0, 300);
+      throw new Error(`WhatsApp (Meta) did not send the message (${response.status}): ${detail}`);
+    }
+  }
+}
+
 export function whatsappSelfFromEnvironment(): SelfWhatsApp | null {
   const provider = (process.env.WHATSAPP_SELF_PROVIDER || "callmebot").toLowerCase();
   const phone = process.env.VP_WHATSAPP_NUMBER?.trim();
@@ -35,6 +73,12 @@ export function whatsappSelfFromEnvironment(): SelfWhatsApp | null {
   if (provider === "callmebot") {
     const key = process.env.CALLMEBOT_API_KEY?.trim();
     return key ? new CallMeBotWhatsApp(phone, key) : null;
+  }
+  if (provider === "meta") {
+    const token = process.env.META_WA_TOKEN?.trim();
+    const phoneNumberId = process.env.META_WA_PHONE_NUMBER_ID?.trim();
+    if (!token || !phoneNumberId) return null;
+    return new MetaWhatsApp(phone, token, phoneNumberId, process.env.META_WA_TEMPLATE?.trim() || "vp_reminder", process.env.META_WA_TEMPLATE_LANG?.trim() || "en");
   }
   return null;
 }

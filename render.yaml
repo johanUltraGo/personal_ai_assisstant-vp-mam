@@ -32,7 +32,11 @@ services:
       - { key: SCHOOL_CALENDAR_FILE_ID, sync: false }
       - { key: VP_EMAIL, sync: false }
       - key: WHATSAPP_SELF_PROVIDER
-        value: callmebot
+        value: meta
+      - { key: META_WA_TOKEN, sync: false }
+      - { key: META_WA_PHONE_NUMBER_ID, sync: false }
+      - key: META_WA_TEMPLATE
+        value: vp_reminder
       - { key: VP_WHATSAPP_NUMBER, sync: false }
       - { key: CALLMEBOT_API_KEY, sync: false }
       - { key: VAPID_PUBLIC_KEY, sync: false }

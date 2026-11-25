@@ -82,3 +82,23 @@ describe("CallMeBot", () => {
     await expect(new CallMeBotWhatsApp("+91", "x", fake).send("hi")).rejects.toThrow(/did not send/);
   });
 });
+
+describe("WhatsApp via Meta", () => {
+  it("sends the approved reminder template to her number", async () => {
+    const { MetaWhatsApp } = await import("../src/connectors/whatsappSelf");
+    let req: any;
+    const fake = (async (url: string, init: any) => { req = { url, ...init }; return new Response("{}", { status: 200 }); }) as any;
+    await new MetaWhatsApp("+91 98765 43210", "tok", "12345", "vp_reminder", "en", fake).send("Reminder: call\ntransport");
+    expect(req.url).toBe("https://graph.facebook.com/v21.0/12345/messages");
+    expect(req.headers.Authorization).toBe("Bearer tok");
+    const body = JSON.parse(req.body);
+    expect(body.to).toBe("919876543210");
+    expect(body.template).toEqual({ name: "vp_reminder", language: { code: "en" }, components: [{ type: "body", parameters: [{ type: "text", text: "Reminder: call transport" }] }] });
+  });
+
+  it("reports Meta's error", async () => {
+    const { MetaWhatsApp } = await import("../src/connectors/whatsappSelf");
+    const fake = (async () => new Response('{"error":{"message":"Template not approved"}}', { status: 400 })) as any;
+    await expect(new MetaWhatsApp("+91", "t", "1", "vp_reminder", "en", fake).send("x")).rejects.toThrow(/Template not approved/);
+  });
+});

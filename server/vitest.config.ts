@@ -25,6 +25,7 @@ export default defineConfig({
       VP_EMAIL: "",
       VP_WHATSAPP_NUMBER: "",
       CALLMEBOT_API_KEY: "",
+      META_WA_TOKEN: "",
       COOKIE_SECURE: "",
       HOST: "",
     },
