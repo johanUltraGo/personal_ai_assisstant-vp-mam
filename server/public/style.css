@@ -36,7 +36,8 @@ h1, h2, h3 { font-family: var(--font-body); font-weight: 600; letter-spacing: va
   background: var(--color-paper-2);
   border-bottom: var(--rule-hair) solid var(--color-rule);
 }
-.brand { text-decoration: none; }
+.brand { display: flex; align-items: center; gap: var(--space-sm); min-width: 0; text-decoration: none; }
+.brand-logo { display: block; height: 3rem; width: auto; flex: none; }
 .brand h1 { font-size: var(--text-lg); font-weight: 700; white-space: nowrap; }
 .voice-link {
   display: inline-flex;
@@ -330,6 +331,8 @@ details[open] > summary { margin-bottom: var(--space-sm); }
     border-bottom: 0;
     border-inline-end: var(--rule-hair) solid var(--color-rule);
   }
+  .brand { flex-direction: column; align-items: flex-start; gap: var(--space-sm); }
+  .brand-logo { height: 5rem; }
   .brand h1 { font-size: var(--text-xl); white-space: normal; }
   .main-nav { flex-direction: column; margin: 0 0 auto; gap: var(--space-3xs); }
   .main-nav a { justify-content: start; min-height: 2.75rem; padding: 0 var(--space-md); font-size: var(--text-md); }

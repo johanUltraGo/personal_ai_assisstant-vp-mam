@@ -40,7 +40,13 @@ body {
   min-height: 4rem;
   padding: var(--space-sm) var(--gutter);
 }
+.wordmark-logo { display: block; height: 3rem; width: auto; flex: none; }
+.wordmark span, .pill-link { white-space: nowrap; }
 .wordmark {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
   font-family: var(--font-display);
   font-size: var(--text-xl);
   font-weight: 500;
