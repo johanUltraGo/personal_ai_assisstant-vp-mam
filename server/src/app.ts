@@ -15,6 +15,7 @@ import { googleRouter } from "./routes/google";
 import { assistantRouter } from "./routes/assistant";
 import { plansRouter } from "./routes/plans";
 import { pushRouter } from "./routes/push";
+import { whatsappWebhookRouter } from "./routes/whatsappWebhook";
 
 export function createApp() {
   const app = express();
@@ -25,12 +26,16 @@ export function createApp() {
       type: (req) =>
         /json/i.test(String(req.headers["content-type"] ?? "")) &&
         !(req.method === "POST" && (req.url ?? "").split("?")[0] === "/api/attachments"),
+      // Meta signs the exact bytes it sent.
+      verify: (req, _res, buf) => { (req as any).rawBody = buf; },
     })
   );
 
   app.get("/health", (_req, res) => res.json({ ok: true }));
 
   app.use("/api/auth", authRouter);
+  // Meta calls this itself (no PIN); it checks Meta's signature and her number.
+  app.use("/api/whatsapp/webhook", whatsappWebhookRouter);
   app.use("/api", requireAccess);
 
   app.use("/api/tasks", tasksRouter);
