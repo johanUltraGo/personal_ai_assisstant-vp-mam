@@ -71,6 +71,21 @@ async function downloadMedia(mediaId: string): Promise<{ data: Buffer; mimeType:
   return { data: Buffer.from(await file.arrayBuffer()), mimeType: info.mime_type || "audio/ogg" };
 }
 
+/** Blue ticks and "typing…" at once, so she knows it is working (the indicator lasts up to 25 s or until the reply). */
+async function showTyping(messageId: string) {
+  const token = process.env.META_WA_TOKEN?.trim();
+  const phoneId = process.env.META_WA_PHONE_NUMBER_ID?.trim();
+  if (!token || !phoneId) return;
+  await fetch(`https://graph.facebook.com/v21.0/${encodeURIComponent(phoneId)}/messages`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ messaging_product: "whatsapp", status: "read", message_id: messageId, typing_indicator: { type: "text" } }),
+  }).catch(() => undefined);
+}
+
+/** WhatsApp chats use the quickest model so replies come in seconds (WHATSAPP_MODEL to change). */
+const whatsappModel = () => process.env.WHATSAPP_MODEL?.trim() || "claude-haiku-5-5";
+
 /** Markdown **bold** becomes WhatsApp *bold*. */
 const forWhatsApp = (text: string) => text.replace(/\*\*(.+?)\*\*/g, "*$1*");
 
@@ -83,6 +98,7 @@ whatsappWebhookRouter.post("/", async (req, res) => {
     // Meta may deliver the same message twice: answer once.
     if (await prisma.activityLog.findFirst({ where: { kind: "whatsapp.in", refId: String(message.id) } })) continue;
     await logActivity("whatsapp.in", "Message from you on WhatsApp.", { type: "whatsapp", id: String(message.id) });
+    await showTyping(String(message.id));
     try {
       let text: string;
       let inputMode: "VOICE" | "TYPED" = "TYPED";
@@ -105,7 +121,7 @@ whatsappWebhookRouter.post("/", async (req, res) => {
         await sendWhatsAppText(her, "I can read text and listen to voice notes. Photos and files aren't supported here yet; please share those in the app.");
         continue;
       }
-      const result = await runTurn(await todaysConversation(), text, inputMode);
+      const result = await runTurn(await todaysConversation(), text, inputMode, undefined, whatsappModel());
       let reply = forWhatsApp(result.reply);
       if (result.cards.some((c) => c.type === "send")) {
         const origin = process.env.PUBLIC_ORIGIN?.trim();

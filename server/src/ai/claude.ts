@@ -31,6 +31,8 @@ export interface ClaudeCall {
   tools: Anthropic.Beta.Messages.BetaTool[];
   messages: Anthropic.Beta.Messages.BetaMessageParam[];
   effort: Effort;
+  /** Overrides ANTHROPIC_MODEL for this request (e.g. a faster model for WhatsApp). */
+  model?: string;
 }
 
 /**
@@ -40,15 +42,17 @@ export interface ClaudeCall {
  * left at the model default (adaptive) and no sampling parameters are sent.
  */
 export function callClaude(client: ClaudeLike, call: ClaudeCall): Promise<Beta> {
+  const model = call.model || claudeModel();
+  // Haiku has no server-side refusal fallback; send the beta only where it exists.
+  const fallback = model.startsWith("claude-haiku") ? {} : { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const };
   return client.beta.messages.create({
-    model: claudeModel(),
+    model,
     max_tokens: 16000,
     system: call.system,
     tools: call.tools,
     messages: call.messages,
     output_config: { effort: call.effort },
     cache_control: { type: "ephemeral" },
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
-  });
+    ...fallback,
+  } as any);
 }

@@ -93,14 +93,15 @@ export async function runTurn(
   conversationId: string,
   text: string,
   inputMode: "VOICE" | "TYPED",
-  client?: ClaudeLike
+  client?: ClaudeLike,
+  model?: string
 ): Promise<TurnResult> {
   const conversation = await prisma.conversation.findUnique({ where: { id: conversationId } });
   if (!conversation) throw new NotFoundError("That conversation no longer exists.");
   if (runningTurns.has(conversationId)) throw new ConversationBusyError();
   runningTurns.add(conversationId);
   try {
-    return await runTurnLocked(conversationId, conversation.kind as ConversationKind, text, inputMode, client ?? getClaude());
+    return await runTurnLocked(conversationId, conversation.kind as ConversationKind, text, inputMode, client ?? getClaude(), model);
   } catch (err) {
     // 400/413 from Claude here means the stored history itself is unusable.
     if (err instanceof Anthropic2.APIError && (err.status === 400 || err.status === 413)) {
@@ -119,7 +120,8 @@ async function runTurnLocked(
   kind: ConversationKind,
   text: string,
   inputMode: "VOICE" | "TYPED",
-  client: ClaudeLike
+  client: ClaudeLike,
+  model?: string
 ): Promise<TurnResult> {
 
   const messages = await history(conversationId);
@@ -130,7 +132,7 @@ async function runTurnLocked(
   const cards: Card[] = [];
   const flags = new Set<string>();
   for (let call = 0; call < MAX_MODEL_CALLS; call++) {
-    const response = await callClaude(client, { system: SYSTEM_PROMPT, tools: toolDefinitions(), messages, effort: EFFORT[kind] });
+    const response = await callClaude(client, { system: SYSTEM_PROMPT, tools: toolDefinitions(), messages, effort: EFFORT[kind], model });
 
     // A refusal or a cut-off reply can end mid tool call: run nothing from it.
     if (response.stop_reason === "refusal" || response.stop_reason === "max_tokens") {
