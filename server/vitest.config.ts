@@ -27,6 +27,7 @@ export default defineConfig({
       CALLMEBOT_API_KEY: "",
       META_WA_TOKEN: "",
       GROQ_API_KEY: "",
+      GEMINI_API_KEY: "",
       COOKIE_SECURE: "",
       HOST: "",
     },
