@@ -5,6 +5,7 @@ import { prisma } from "../db";
 import { runTurn, startConversation } from "../assistant/agent";
 import { schoolTimezone } from "../services/morningListService";
 import { logActivity } from "../services/activityService";
+import { transcribeAudio, transcriptionAvailable } from "../ai/transcribe";
 
 /**
  * Two-way WhatsApp: Meta forwards her messages here; the same assistant
@@ -58,6 +59,18 @@ export async function sendWhatsAppText(to: string, body: string) {
   }
 }
 
+/** Downloads a voice note from Meta (two steps: media id -> short-lived URL -> bytes). */
+async function downloadMedia(mediaId: string): Promise<{ data: Buffer; mimeType: string }> {
+  const token = process.env.META_WA_TOKEN?.trim();
+  const auth = { Authorization: `Bearer ${token}` };
+  const meta = await fetch(`https://graph.facebook.com/v21.0/${encodeURIComponent(mediaId)}`, { headers: auth });
+  if (!meta.ok) throw new Error(`Could not find the voice note (${meta.status}).`);
+  const info = (await meta.json()) as { url: string; mime_type?: string };
+  const file = await fetch(info.url, { headers: auth });
+  if (!file.ok) throw new Error(`Could not download the voice note (${file.status}).`);
+  return { data: Buffer.from(await file.arrayBuffer()), mimeType: info.mime_type || "audio/ogg" };
+}
+
 /** Markdown **bold** becomes WhatsApp *bold*. */
 const forWhatsApp = (text: string) => text.replace(/\*\*(.+?)\*\*/g, "*$1*");
 
@@ -71,11 +84,28 @@ whatsappWebhookRouter.post("/", async (req, res) => {
     if (await prisma.activityLog.findFirst({ where: { kind: "whatsapp.in", refId: String(message.id) } })) continue;
     await logActivity("whatsapp.in", "Message from you on WhatsApp.", { type: "whatsapp", id: String(message.id) });
     try {
-      if (message.type !== "text" || !message.text?.body) {
-        await sendWhatsAppText(her, "For now I can read typed messages only. Please type it, or use the voice page in the app.");
+      let text: string;
+      let inputMode: "VOICE" | "TYPED" = "TYPED";
+      if (message.type === "text" && message.text?.body) {
+        text = `[WhatsApp message] ${message.text.body}`;
+      } else if (message.type === "audio" && message.audio?.id) {
+        if (!transcriptionAvailable()) {
+          await sendWhatsAppText(her, "I can't listen to voice notes yet. Please type it for now.");
+          continue;
+        }
+        const audio = await downloadMedia(message.audio.id);
+        const heard = await transcribeAudio(audio.data, audio.mimeType);
+        if (!heard) {
+          await sendWhatsAppText(her, "Sorry Ma'am, I couldn't hear anything in that voice note. Could you send it again?");
+          continue;
+        }
+        text = `[WhatsApp voice note, transcribed automatically] ${heard}`;
+        inputMode = "VOICE";
+      } else {
+        await sendWhatsAppText(her, "I can read text and listen to voice notes. Photos and files aren't supported here yet; please share those in the app.");
         continue;
       }
-      const result = await runTurn(await todaysConversation(), message.text.body, "TYPED");
+      const result = await runTurn(await todaysConversation(), text, inputMode);
       let reply = forWhatsApp(result.reply);
       if (result.cards.some((c) => c.type === "send")) {
         const origin = process.env.PUBLIC_ORIGIN?.trim();
