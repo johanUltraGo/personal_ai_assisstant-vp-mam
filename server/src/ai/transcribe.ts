@@ -9,7 +9,7 @@ export function transcriptionAvailable(): boolean {
 
 /** Google Gemini (free key from aistudio.google.com) listens to the audio and writes it down. */
 async function transcribeWithGemini(audio: Buffer, mimeType: string, key: string, fetchImpl: typeof fetch): Promise<string> {
-  const model = process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash";
+  const model = process.env.GEMINI_MODEL?.trim() || "gemini-3.8-flash";
   const response = await fetchImpl(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": key },
